@@ -1,0 +1,3 @@
+[submodule "ace-attorney-reddit-bot"]
+	path = ace-attorney-reddit-bot
+	url = https://github.com/micah5/ace-attorney-reddit-bot
