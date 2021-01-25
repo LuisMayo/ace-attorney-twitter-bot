@@ -66,7 +66,7 @@ async function processNotifications() {
         Deno.writeTextFile('./id.txt', lastId);
         // For each notification...
         for (const mention of mentions.data) {
-            let pointer = mention.referenced_tweets.find((val: any) => val.type === 'replied_to')?.id;
+            let pointer = mention.referenced_tweets?.find((val: any) => val.type === 'replied_to')?.id;
             if (pointer == null) { // I wasn't mentioned in a thread
                 break;
             }
@@ -95,7 +95,7 @@ async function processNotifications() {
 
             // We prepare the comment list for the bridge
             const bridgeList: CommentBridge[] = list.map(comment => new CommentBridge(comment));
-            Deno.run({cmd: ['python3', 'bridge.py', JSON.stringify(commonForBridge), JSON.stringify(bridgeList)], stdout: 'inherit', stderr: 'inherit'});
+            Deno.run({cmd: ['python', 'bridge.py', JSON.stringify(commonForBridge), JSON.stringify(bridgeList)], stdout: 'inherit', stderr: 'inherit'});
         }
     }
 }
