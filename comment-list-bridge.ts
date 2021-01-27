@@ -1,11 +1,13 @@
-import { CommentList } from "./comment-list.ts";
+import { TweetObject } from "./tweet.ts";
 
 export class CommentBridge {
     body: string;
     author: {name: string};
+    score: number;
 
-    constructor(comment: CommentList) {
-        this.author = {name: comment.includes.users[0].name};
-        this.body = comment.data.text;
+    constructor(comment: TweetObject) {
+        this.author = {name: comment.user.name};
+        this.body = comment.text;
+        this.score = 0;
     }
 }
