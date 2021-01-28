@@ -1,1 +1,2 @@
-munch
+# tweepy
+git+https://github.com/tweepy/tweepy@video-upload
