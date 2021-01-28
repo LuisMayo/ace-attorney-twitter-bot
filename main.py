@@ -40,7 +40,7 @@ def check_mentions():
             characters = anim.get_characters(most_common)
             anim.comments_to_scene(thread, characters, output_filename=tweet.id_str + '.mp4')
             uploaded_media = api.media_upload(tweet.id_str + '.mp4')
-            api.update_status('@' + tweet.in_reply_to_screen_name + ' ', in_reply_to_status_id=tweet.id_str, media_ids=[uploaded_media.media_id_string])
+            api.update_status('@' + tweet.author.screen_name + ' ', in_reply_to_status_id=tweet.id_str, media_ids=[uploaded_media.media_id_string])
             update_id(tweet.id_str)
         else:
             update_id(tweet.id_str)
