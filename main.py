@@ -5,6 +5,7 @@ from collections import Counter
 import tweepy
 import re
 import sched, time
+import os
 
 import anim
 from comment_list_brige import Comment
@@ -38,9 +39,11 @@ def check_mentions():
                 thread.insert(0, Comment(current_tweet))
             most_common = [users_to_names[t[0]] for t in counter.most_common()]
             characters = anim.get_characters(most_common)
-            anim.comments_to_scene(thread, characters, output_filename=tweet.id_str + '.mp4')
-            uploaded_media = api.media_upload(tweet.id_str + '.mp4')
+            output_filename = tweet.id_str + '.mp4'
+            anim.comments_to_scene(thread, characters, output_filename=output_filename)
+            uploaded_media = api.media_upload(output_filename)
             api.update_status('@' + tweet.author.screen_name + ' ', in_reply_to_status_id=tweet.id_str, media_ids=[uploaded_media.media_id_string])
+            os.remove(output_filename)
             update_id(tweet.id_str)
         else:
             update_id(tweet.id_str)
