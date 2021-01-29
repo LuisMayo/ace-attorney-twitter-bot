@@ -31,8 +31,9 @@ def check_mentions():
             users_to_names = {} # This will serve to link @display_names with usernames
             counter = Counter()
             current_tweet = tweet
-            while current_tweet.in_reply_to_status_id_str:
-                current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str)
+            # In the case of Quotes I have to check for its presence instead of whether its None because Twitter API designers felt creative that week
+            while current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str'):
+                current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str)
                 sanitize_tweet(current_tweet)
                 users_to_names[current_tweet.author.screen_name] = current_tweet.author.name
                 counter.update({current_tweet.author.screen_name: 1})  
@@ -41,7 +42,7 @@ def check_mentions():
             characters = anim.get_characters(most_common)
             output_filename = tweet.id_str + '.mp4'
             anim.comments_to_scene(thread, characters, output_filename=output_filename)
-            uploaded_media = api.media_upload(output_filename)
+            uploaded_media = api.media_upload(output_filename, media_category='TWEET_VIDEO')
             api.update_status('@' + tweet.author.screen_name + ' ', in_reply_to_status_id=tweet.id_str, media_ids=[uploaded_media.media_id_string])
             os.remove(output_filename)
             update_id(tweet.id_str)
@@ -68,5 +69,5 @@ auth.set_access_token(keys['accessToken'], keys['accessTokenSecret'])
 api = tweepy.API(auth)
 
 s = sched.scheduler(time.time, time.sleep)
-s.enter(20, 2, check_mentions)
+s.enter(0, 2, check_mentions)
 s.run()
