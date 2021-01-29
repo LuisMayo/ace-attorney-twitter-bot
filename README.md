@@ -14,7 +14,7 @@
 Clone the repository with submodules
 
 ```
-git clone --recursive https://github.com/LuisMayo/TelegramConversationGames.git
+git clone --recursive https://github.com/LuisMayo/ace-attorney-twitter-bot
 ```
 Install dependencies of this repo and the child repo
 ``` bash
