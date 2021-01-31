@@ -42,8 +42,15 @@ def check_mentions():
             characters = anim.get_characters(most_common)
             output_filename = tweet.id_str + '.mp4'
             anim.comments_to_scene(thread, characters, output_filename=output_filename)
-            uploaded_media = api.media_upload(output_filename, media_category='TWEET_VIDEO')
-            api.update_status('@' + tweet.author.screen_name + ' ', in_reply_to_status_id=tweet.id_str, media_ids=[uploaded_media.media_id_string])
+            try:
+                uploaded_media = api.media_upload(output_filename, media_category='TWEET_VIDEO')
+                api.update_status('@' + tweet.author.screen_name + ' ', in_reply_to_status_id=tweet.id_str, media_ids=[uploaded_media.media_id_string])
+            except tweepy.error.TweepError as e:
+                try:
+                    api.update_status('@' + tweet.author.screen_name + ' ' + e, in_reply_to_status_id=tweet.id_str)
+                except:
+                    print(e)
+                print(e)
             os.remove(output_filename)
             update_id(tweet.id_str)
         else:
