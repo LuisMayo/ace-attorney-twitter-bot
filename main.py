@@ -21,7 +21,6 @@ def update_id(id):
         idFile.write(id)
 
 def check_mentions():
-    print('Checking mentions')
     global lastId
     mentions = api.mentions_timeline(count='200') if lastId == None else api.mentions_timeline(since_id=lastId, count='200')
     for tweet in mentions:
