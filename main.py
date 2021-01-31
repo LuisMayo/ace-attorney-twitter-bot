@@ -44,6 +44,9 @@ def check_mentions():
             anim.comments_to_scene(thread, characters, output_filename=output_filename)
             try:
                 uploaded_media = api.media_upload(output_filename, media_category='TWEET_VIDEO')
+                while (uploaded_media.processing_info['state'] == 'pending'):
+                    time.sleep(uploaded_media.processing_info['check_after_secs'])
+                    uploaded_media = api.get_media_upload_status(uploaded_media.media_id_string)
                 api.update_status('@' + tweet.author.screen_name + ' ', in_reply_to_status_id=tweet.id_str, media_ids=[uploaded_media.media_id_string])
             except tweepy.error.TweepError as e:
                 try:
