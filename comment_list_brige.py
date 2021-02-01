@@ -1,7 +1,7 @@
 class Comment:
   def __init__(self, tweet):
     self.author = Author(tweet.user.name)
-    self.body = tweet.text
+    self.body = tweet.full_text
     self.score = 0
 
 class Author:

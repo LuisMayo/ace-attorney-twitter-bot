@@ -12,8 +12,8 @@ from comment_list_brige import Comment
 
 
 def sanitize_tweet(tweet):
-    tweet.text = re.sub(r'^(@\S+ )+', '', tweet.text)
-    tweet.text = re.sub(r'(https)\S*', '(link)', tweet.text)
+    tweet.full_text = re.sub(r'^(@\S+ )+', '', tweet.full_text)
+    tweet.full_text = re.sub(r'(https)\S*', '(link)', tweet.full_text)
 
 def update_id(id):
     with open('id.txt', 'w') as idFile:
@@ -21,17 +21,17 @@ def update_id(id):
 
 def check_mentions():
     global lastId
-    mentions = api.mentions_timeline(count='200') if lastId == None else api.mentions_timeline(since_id=lastId, count='200')
+    mentions = api.mentions_timeline(count='200') if lastId == None else api.mentions_timeline(since_id=lastId, count='200', tweet_mode="extended")
     for tweet in mentions:
         lastId = tweet.id_str
-        if 'render' in tweet.text:
+        if 'render' in tweet.full_text:
             thread = []
             users_to_names = {} # This will serve to link @display_names with usernames
             counter = Counter()
             current_tweet = tweet
             # In the case of Quotes I have to check for its presence instead of whether its None because Twitter API designers felt creative that week
             while current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str'):
-                current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str)
+                current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
                 sanitize_tweet(current_tweet)
                 users_to_names[current_tweet.author.screen_name] = current_tweet.author.name
                 counter.update({current_tweet.author.screen_name: 1})  
