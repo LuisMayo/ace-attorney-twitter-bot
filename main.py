@@ -12,9 +12,8 @@ from comment_list_brige import Comment
 
 
 def sanitize_tweet(tweet):
-    return
-    # tweet.text = re.sub(r'^(@\S+) +', '', tweet)
-    # tweet.text = re.sub(r'(https)\S*', '', tweet)
+    tweet.text = re.sub(r'^(@\S+ )+', '', tweet.text)
+    tweet.text = re.sub(r'(https)\S*', '(link)', tweet.text)
 
 def update_id(id):
     with open('id.txt', 'w') as idFile:
