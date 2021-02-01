@@ -8,7 +8,7 @@
 
  - Python 3
  - Twitter Credentials.
- - Ace Attorney data. Download it [here](https://drive.google.com/drive/folders/16zqMXmAoUWlWNKhs6LRvrbHCE_1xt3Hi?usp=sharing) and put them in `./assets/`
+ - Ace Attorney data. Download it [here](https://drive.google.com/drive/folders/1jNpnB3pjHFvOyrfZ-WxlOXNaZ-XH4INx?usp=sharing) and put them in `./assets/`
  
  
 ### Installing
