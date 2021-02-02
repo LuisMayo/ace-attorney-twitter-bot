@@ -51,7 +51,6 @@ def check_mentions():
                     api.update_status('@' + tweet.author.screen_name + ' ', in_reply_to_status_id=tweet.id_str, media_ids=[uploaded_media.media_id_string])
                 except tweepy.error.TweepError as e:
                     try:
-                        time.sleep(10)
                         api.update_status('@' + tweet.author.screen_name + ' ' + str(e), in_reply_to_status_id=tweet.id_str)
                     except Exception as second_error:
                         print (second_error)
