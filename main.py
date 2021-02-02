@@ -16,6 +16,7 @@ def sanitize_tweet(tweet):
     tweet.full_text = re.sub(r'(https)\S*', '(link)', tweet.full_text)
 
 def update_id(id):
+    global lastId
     lastId = id
     with open('id.txt', 'w') as idFile:
         idFile.write(id)
