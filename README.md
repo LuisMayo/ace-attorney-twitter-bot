@@ -31,7 +31,7 @@ Start the project
 `python main.py`
 
 #### Note about Linux systems
-In Linux it may be a bit harder to set the enviorenmente properly. More specifically it may be hard to install required codecs.
+In Linux it may be a bit harder to set the enviorenment properly. More specifically it may be hard to install required codecs.
 If having a codec problem (like "couldn't find codec for id 27") you may need to compile ffmpeg and opencv by yourself.
 You should be good using these guides (tested on Ubuntu with success and on Debian without success)
   - [FFMPEG compilation guide](https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu)
