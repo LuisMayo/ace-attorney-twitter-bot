@@ -4,11 +4,15 @@ sys.path.insert(0, './ace-attorney-reddit-bot')
 from collections import Counter 
 import tweepy
 import re
-import sched, time
+import time
 import os
+import queue
+import threading
 
 import anim
 from comment_list_brige import Comment
+
+mention_queue = queue.Queue()
 
 
 def sanitize_tweet(tweet):
@@ -16,18 +20,28 @@ def sanitize_tweet(tweet):
     tweet.full_text = re.sub(r'(https)\S*', '(link)', tweet.full_text)
 
 def update_id(id):
-    global lastId
-    lastId = id
     with open('id.txt', 'w') as idFile:
         idFile.write(id)
 
 def check_mentions():
     global lastId
-    mentions = api.mentions_timeline(count='200') if lastId == None else api.mentions_timeline(since_id=lastId, count='200', tweet_mode="extended")
-    if len(mentions) > 0:
-        update_id(mentions[0].id_str)
-    for tweet in mentions:
-        if 'render' in tweet.full_text:
+    global mention_queue
+    while True:
+        mentions = api.mentions_timeline(count='200') if lastId == None else api.mentions_timeline(since_id=lastId, count='200', tweet_mode="extended")
+        if len(mentions) > 0:
+            lastId = mentions[len(mentions) - 1].id_str
+            for tweet in mentions[::-1]:
+                if 'render' in tweet.full_text:
+                    mention_queue.put(tweet)
+                    print(mention_queue.qsize())
+        time.sleep(20)
+
+def process_tweets():
+    global mention_queue
+    while True:
+        if not mention_queue.empty():
+            tweet = mention_queue.get()
+            update_id(tweet.id_str)
             thread = []
             users_to_names = {} # This will serve to link @display_names with usernames
             counter = Counter()
@@ -39,11 +53,13 @@ def check_mentions():
                 users_to_names[current_tweet.author.screen_name] = current_tweet.author.name
                 counter.update({current_tweet.author.screen_name: 1})  
                 thread.insert(0, Comment(current_tweet))
-            if (len(users_to_names) >= 2): 
+            if (len(users_to_names) >= 2):
                 most_common = [users_to_names[t[0]] for t in counter.most_common()]
                 characters = anim.get_characters(most_common)
                 output_filename = tweet.id_str + '.mp4'
                 anim.comments_to_scene(thread, characters, output_filename=output_filename)
+                # Give some time to the other thread
+                time.sleep(1)
                 try:
                     uploaded_media = api.media_upload(output_filename, media_category='TWEET_VIDEO')
                     while (uploaded_media.processing_info['state'] == 'pending'):
@@ -62,7 +78,10 @@ def check_mentions():
                     api.update_status('@' + tweet.author.screen_name + " There should be at least two people in the conversation", in_reply_to_status_id=tweet.id_str)
                 except Exception as e:
                     print(e)
-    s.enter(20, 2, check_mentions)
+            time.sleep(2)
+        else:
+            time.sleep(10)
+
 
 ################################## Main
 
@@ -81,7 +100,7 @@ except FileNotFoundError:
 auth = tweepy.OAuthHandler(keys['consumerApiKey'], keys['consumerApiSecret'])
 auth.set_access_token(keys['accessToken'], keys['accessTokenSecret'])
 api = tweepy.API(auth)
-
-s = sched.scheduler(time.time, time.sleep)
-s.enter(0, 2, check_mentions)
-s.run()
+producer = threading.Thread(target=check_mentions)
+consumer = threading.Thread(target=process_tweets)
+producer.start()
+consumer.start()
