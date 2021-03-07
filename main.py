@@ -8,7 +8,6 @@ import time
 import os
 import queue
 import threading
-import json
 
 import anim
 from comment_list_brige import Comment
@@ -80,14 +79,14 @@ def process_tweets():
                 except tweepy.error.TweepError as e:
                     limit = False
                     try:
-                        parsedError = json.loads(e)
-                        if (parsedError['code'] == 185):
+                        print(e.api_code)
+                        if (e.api_code == 324):
                             print("I'm Rated-limited :(")
                             limit = True
                             mention_queue.put(tweet)
                             time.sleep(900)
-                    except:
-                        pass
+                    except Exception as parsexc:
+                        print(parsexc)
                     try:
                         if not limit:
                             api.update_status('@' + tweet.author.screen_name + ' ' + str(e), in_reply_to_status_id=tweet.id_str)
