@@ -47,7 +47,7 @@ def process_tweets():
             counter = Counter()
             current_tweet = tweet
             # In the case of Quotes I have to check for its presence instead of whether its None because Twitter API designers felt creative that week
-            while current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str'):
+            while (current_tweet is not None) and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
                 try:
                     current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
                     sanitize_tweet(current_tweet)
