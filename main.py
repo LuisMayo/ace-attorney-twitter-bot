@@ -59,6 +59,7 @@ def process_tweets():
                         api.update_status('@' + tweet.author.screen_name + ' I\'m sorry. I wasn\'t able to retrieve the full thread. Deleted tweets or private accounts may exist', in_reply_to_status_id=tweet.id_str)
                     except Exception as second_error:
                         print (second_error)
+                    current_tweet = None
             if (len(users_to_names) >= 2):
                 most_common = [users_to_names[t[0]] for t in counter.most_common()]
                 characters = anim.get_characters(most_common)
