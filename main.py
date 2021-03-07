@@ -71,11 +71,11 @@ def process_tweets():
                 # Give some time to the other thread
                 time.sleep(1)
                 try:
-                    uploaded_media = api.media_upload(output_filename, media_category='TWEET_VIDEO')
-                    while (uploaded_media.processing_info['state'] == 'pending'):
-                        time.sleep(uploaded_media.processing_info['check_after_secs'])
-                        uploaded_media = api.get_media_upload_status(uploaded_media.media_id_string)
-                    api.update_status('@' + tweet.author.screen_name + ' ', in_reply_to_status_id=tweet.id_str, media_ids=[uploaded_media.media_id_string])
+                    # uploaded_media = api.media_upload(output_filename, media_category='TWEET_VIDEO')
+                    # while (uploaded_media.processing_info['state'] == 'pending'):
+                    #     time.sleep(uploaded_media.processing_info['check_after_secs'])
+                    #     uploaded_media = api.get_media_upload_status(uploaded_media.media_id_string)
+                    api.update_status('@' + tweet.author.screen_name + ' ', in_reply_to_status_id=tweet.id_str, media_ids=['xs'])
                 except tweepy.error.TweepError as e:
                     limit = False
                     try:
@@ -91,7 +91,7 @@ def process_tweets():
                         if not limit:
                             api.update_status('@' + tweet.author.screen_name + ' ' + str(e), in_reply_to_status_id=tweet.id_str)
                     except Exception as second_error:
-                        print (second_error)
+                        print(second_error)
                     print(e)
                 os.remove(output_filename)
             else:
