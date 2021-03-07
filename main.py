@@ -27,7 +27,7 @@ def check_mentions():
     global lastId
     global mention_queue
     while True:
-        mentions = api.mentions_timeline(count='200') if lastId == None else api.mentions_timeline(since_id=lastId, count='200', tweet_mode="extended")
+        mentions = api.mentions_timeline(count='200', tweet_mode="extended") if lastId == None else api.mentions_timeline(since_id=lastId, count='200', tweet_mode="extended")
         if len(mentions) > 0:
             lastId = mentions[0].id_str
             for tweet in mentions[::-1]:
