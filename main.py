@@ -88,7 +88,7 @@ def process_tweets():
                     api.update_status('@' + tweet.author.screen_name + " There should be at least two people in the conversation", in_reply_to_status_id=tweet.id_str)
                 except Exception as e:
                     print(e)
-            time.sleep(2)
+            time.sleep(1)
         except Exception as e:
             print(e)
 
