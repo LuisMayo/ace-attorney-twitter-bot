@@ -27,13 +27,16 @@ def check_mentions():
     global lastId
     global mention_queue
     while True:
-        mentions = api.mentions_timeline(count='200', tweet_mode="extended") if lastId == None else api.mentions_timeline(since_id=lastId, count='200', tweet_mode="extended")
-        if len(mentions) > 0:
-            lastId = mentions[0].id_str
-            for tweet in mentions[::-1]:
-                if 'render' in tweet.full_text:
-                    mention_queue.put(tweet)
-                    print(mention_queue.qsize())
+        try:
+            mentions = api.mentions_timeline(count='200', tweet_mode="extended") if lastId == None else api.mentions_timeline(since_id=lastId, count='200', tweet_mode="extended")
+            if len(mentions) > 0:
+                lastId = mentions[0].id_str
+                for tweet in mentions[::-1]:
+                    if 'render' in tweet.full_text:
+                        mention_queue.put(tweet)
+                        print(mention_queue.qsize())
+        except Exception as e:
+            print(e)
         time.sleep(20)
 
 def process_tweets():
