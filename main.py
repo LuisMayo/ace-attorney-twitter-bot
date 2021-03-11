@@ -95,12 +95,12 @@ def process_tweets():
                     limit = False
                     try:
                         print(e.api_code)
-                        if (e.api_code == 324):
+                        if (e.api_code == 185):
                             print("I'm Rated-limited :(")
                             limit = True
                             mention_queue.put(tweet)
                             current_date = datetime.now(tz=None)
-                            if (lastTime is not None and (current_date - lastTime).seconds < 60 ):
+                            if ('lastTime' in globals() and lastTime is not None and (current_date - lastTime).seconds < 60 ):
                                 time.sleep(900)
                                 print("I'm double rate limited")
                             else:
@@ -123,6 +123,15 @@ def process_tweets():
             time.sleep(1)
         except Exception as e:
             print(e)
+    
+def restore_account():
+    global mention_queue
+    global next_account
+    while True:
+        mention_queue.join()
+        next_account = 0
+        init_twitter_api()
+        time.sleep(10)
 
 
 ################################## Main
@@ -143,5 +152,6 @@ next_account = 0
 init_twitter_api()
 producer = threading.Thread(target=check_mentions)
 consumer = threading.Thread(target=process_tweets)
+threading.Thread(target=restore_account).start()
 producer.start()
 consumer.start()
