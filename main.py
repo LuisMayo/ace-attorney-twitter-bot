@@ -100,7 +100,7 @@ def process_tweets():
                             limit = True
                             mention_queue.put(tweet)
                             current_date = datetime.now(tz=None)
-                            if ('lastTime' in globals() and lastTime is not None and (current_date - lastTime).seconds < 60 ):
+                            if ('lastTime' in globals() and lastTime is not None and (current_date - lastTime).seconds < 300 ):
                                 time.sleep(900)
                                 print("I'm double rate limited")
                             else:
