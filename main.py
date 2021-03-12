@@ -52,11 +52,11 @@ def process_tweets():
             current_tweet = tweet
             songs = ['PWR', 'JFA', 'TAT']
             if 'music=' in tweet.full_text:
-                name_music = tweet.full_text.split('=', 1)[1][:3]
+                music_tweet = tweet.full_text.split('=', 1)[1][:3]
             else:
-                name_music = random.choices(songs, [1, 1, 1], k=1)
+                music_tweet = random.choices(songs, [1, 1, 1], k=1)
             
-            if name_music not in songs: # If the music is written badly in the mention tweet, the bot will remind how to write it properly
+            if music_tweet not in songs: # If the music is written badly in the mention tweet, the bot will remind how to write it properly
                 try:
                     api.update_status('@' + tweet.author.screen_name + ' The music argument format is incorrect. The posibilities are: \nPWR: Phoenix Wright Ace Attorney \nJFA: Justice for All \nTAT: Trials and Tribulations', in_reply_to_status_id=tweet.id_str)
                 except Exception as musicerror:
@@ -80,7 +80,7 @@ def process_tweets():
                     most_common = [users_to_names[t[0]] for t in counter.most_common()]
                     characters = anim.get_characters(most_common)
                     output_filename = tweet.id_str + '.mp4'
-                    anim.comments_to_scene(thread, characters, output_filename=output_filename, name_music)
+                    anim.comments_to_scene(thread, characters, name_music = music_tweet, output_filename=output_filename)
                     # Give some time to the other thread
                     time.sleep(1)
                     try:
