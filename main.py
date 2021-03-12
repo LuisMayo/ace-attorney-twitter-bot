@@ -56,7 +56,7 @@ def process_tweets():
             else:
                 name_music = random.choices(songs, [1, 1, 1], k=1)
             
-            if name_music not in songs:
+            if name_music not in songs: # If the music is written badly in the mention tweet, the bot will remind how to write it properly
                 try:
                     api.update_status('@' + tweet.author.screen_name + ' The music argument format is incorrect. The posibilities are: \nPWR: Phoenix Wright Ace Attorney \nJFA: Justice for All \nTAT: Trials and Tribulations', in_reply_to_status_id=tweet.id_str)
                 except Exception as musicerror:
