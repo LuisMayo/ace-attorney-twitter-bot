@@ -51,10 +51,11 @@ def process_tweets():
             counter = Counter()
             current_tweet = tweet
             songs = ['PWR', 'JFA', 'TAT']
+            
             if 'music=' in tweet.full_text:
                 music_tweet = tweet.full_text.split('=', 1)[1][:3]
             else:
-                music_tweet = random.choices(songs, [1, 1, 1], k=1)
+                music_tweet = random.choices(songs, [1, 1, 1], k=1)[0]
             
             if music_tweet not in songs: # If the music is written badly in the mention tweet, the bot will remind how to write it properly
                 try:
