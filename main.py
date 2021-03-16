@@ -50,12 +50,15 @@ def process_tweets():
             users_to_names = {} # This will serve to link @display_names with usernames
             counter = Counter()
             current_tweet = tweet
-            songs = ['PWR', 'JFA', 'TAT']
+            songs = ['PWR', 'JFA', 'TAT', 'rnd']
             
             if 'music=' in tweet.full_text:
-                music_tweet = tweet.full_text.split('=', 1)[1][:3]
+                music_tweet = tweet.full_text.split('music=', 1)[1][:3]
             else:
-                music_tweet = random.choices(songs, [1, 1, 1], k=1)[0]
+                music_tweet = 'PWR'
+                
+            if music_tweet == 'rnd':
+                music_tweet = random.choices(songs, [1, 1, 1, 0], k=1)[0]
             
             if music_tweet not in songs: # If the music is written badly in the mention tweet, the bot will remind how to write it properly
                 try:
