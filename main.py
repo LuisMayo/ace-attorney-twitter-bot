@@ -100,13 +100,13 @@ def process_tweets():
                     characters = anim.get_characters(most_common)
                     output_filename = tweet.id_str + '.mp4'
                     anim.comments_to_scene(thread, characters, name_music = music_tweet, output_filename=output_filename)
-                    # Give some time to the other thread
-                    time.sleep(1)
                     try:
                         uploaded_media = api.media_upload(output_filename, media_category='TWEET_VIDEO')
                         while (uploaded_media.processing_info['state'] == 'pending'):
                             time.sleep(uploaded_media.processing_info['check_after_secs'])
                             uploaded_media = api.get_media_upload_status(uploaded_media.media_id_string)
+                        # Twitter may not have properly proccesed the video even if it says so
+                        time.sleep(2)
                         api.update_status('@' + tweet.author.screen_name + ' ', in_reply_to_status_id=tweet.id_str, media_ids=[uploaded_media.media_id_string])
                     except tweepy.error.TweepError as e:
                         limit = False
