@@ -131,7 +131,7 @@ def process_tweets():
                         except Exception as second_error:
                             print(second_error)
                         print(e)
-                    os.remove(output_filename)
+                    clean(thread, output_filename)
                 else:
                     try:
                         api.update_status('@' + tweet.author.screen_name + " There should be at least two people in the conversation", in_reply_to_status_id=tweet.id_str)
@@ -139,8 +139,22 @@ def process_tweets():
                         print(e)
             time.sleep(1)
         except Exception as e:
+            clean(thread, output_filename)
             print(e)
     
+
+def clean(thread, output_filename):
+    try:
+        os.remove(output_filename)
+    except Exception as second_e:
+        print(second_e)
+    try:
+        for comment in thread:
+            if (hasattr(comment, 'evidence')):
+                os.remove(comment.evidence)
+    except Exception as second_e:
+        print(second_e)
+
 def restore_account():
     global mention_queue
     global next_account
