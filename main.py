@@ -192,6 +192,7 @@ next_account = 0
 init_twitter_api()
 producer = threading.Thread(target=check_mentions)
 consumer = threading.Thread(target=process_tweets)
+threading.Thread(target=process_tweets).start()
 threading.Thread(target=restore_account).start()
 producer.start()
 consumer.start()
