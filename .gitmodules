@@ -2,3 +2,6 @@
 	path = ace-attorney-reddit-bot
 	url = https://github.com/LuisMayo/ace-attorney-bot
 	branch = main
+[submodule "video-splitter"]
+	path = video-splitter
+	url = https://github.com/LuisMayo/video-splitter

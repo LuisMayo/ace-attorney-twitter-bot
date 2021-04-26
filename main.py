@@ -1,6 +1,7 @@
 import sys
 import json
-sys.path.insert(0, './ace-attorney-reddit-bot')
+sys.path.append('./ace-attorney-reddit-bot')
+sys.path.append('./video-splitter')
 from collections import Counter 
 import tweepy
 import re
@@ -13,6 +14,7 @@ import random
 import anim
 from comment_list_brige import Comment
 from datetime import datetime
+splitter = __import__("ffmpeg-split")
 
 mention_queue = queue.Queue()
 
@@ -37,6 +39,15 @@ def sanitize_tweet(tweet):
 def update_id(id):
     with open('id.txt', 'w') as idFile:
         idFile.write(id)
+
+def postVideoTweet(reply_id, reply_name, filename):
+    uploaded_media = api.media_upload(filename, media_category='TWEET_VIDEO')
+    while (uploaded_media.processing_info['state'] == 'pending'):
+        time.sleep(uploaded_media.processing_info['check_after_secs'])
+        uploaded_media = api.get_media_upload_status(uploaded_media.media_id_string)
+    time.sleep(10)
+    return api.update_status('@' + reply_name + ' ', in_reply_to_status_id=reply_id, media_ids=[uploaded_media.media_id_string])
+
 
 def check_mentions():
     global lastId
@@ -100,14 +111,11 @@ def process_tweets():
                     characters = anim.get_characters(most_common)
                     output_filename = tweet.id_str + '.mp4'
                     anim.comments_to_scene(thread, characters, name_music = music_tweet, output_filename=output_filename)
+                    files = splitter.split_by_seconds(output_filename, 140)
+                    reply_to_tweet = tweet
                     try:
-                        uploaded_media = api.media_upload(output_filename, media_category='TWEET_VIDEO')
-                        while (uploaded_media.processing_info['state'] == 'pending'):
-                            time.sleep(uploaded_media.processing_info['check_after_secs'])
-                            uploaded_media = api.get_media_upload_status(uploaded_media.media_id_string)
-                        # Twitter may not have properly proccesed the video even if it says so
-                        time.sleep(2)
-                        api.update_status('@' + tweet.author.screen_name + ' ', in_reply_to_status_id=tweet.id_str, media_ids=[uploaded_media.media_id_string])
+                        for file_name in files:
+                            reply_to_tweet = postVideoTweet(reply_to_tweet.id_str, reply_to_tweet.author.screen_name, file_name)
                     except tweepy.error.TweepError as e:
                         limit = False
                         try:
@@ -131,7 +139,7 @@ def process_tweets():
                         except Exception as second_error:
                             print(second_error)
                         print(e)
-                    clean(thread, output_filename)
+                    clean(thread, output_filename, files)
                 else:
                     try:
                         api.update_status('@' + tweet.author.screen_name + " There should be at least two people in the conversation", in_reply_to_status_id=tweet.id_str)
@@ -139,19 +147,20 @@ def process_tweets():
                         print(e)
             time.sleep(1)
         except Exception as e:
-            clean(thread, output_filename)
+            clean(thread, output_filename, [])
             print(e)
     
 
-def clean(thread, output_filename):
+def clean(thread, output_filename, files):
     try:
-        os.remove(output_filename)
+        for comment in thread:
+            if (hasattr(comment, 'evidence') and comment.evidence is not None):
+                os.remove(comment.evidence)
     except Exception as second_e:
         print(second_e)
     try:
-        for comment in thread:
-            if (hasattr(comment, 'evidence')):
-                os.remove(comment.evidence)
+        for file_name in files:
+            os.remove(file_name)
     except Exception as second_e:
         print(second_e)
 
