@@ -61,6 +61,7 @@ def check_mentions():
                     if 'render' in tweet.full_text:
                         mention_queue.put(tweet)
                         print(mention_queue.qsize())
+                update_id(lastId)
         except Exception as e:
             print(e)
         time.sleep(20)
@@ -71,7 +72,6 @@ def process_tweets():
     while True:
         try:
             tweet = mention_queue.get()
-            update_id(tweet.id_str)
             thread = []
             users_to_names = {} # This will serve to link @display_names with usernames
             counter = Counter()
