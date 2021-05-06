@@ -7,7 +7,7 @@ import tweepy
 import re
 import time
 import os
-import queue
+from persistqueue import Queue
 import threading
 import random
 
@@ -16,7 +16,7 @@ from comment_list_brige import Comment
 from datetime import datetime
 splitter = __import__("ffmpeg-split")
 
-mention_queue = queue.Queue()
+mention_queue = Queue('queue')
 
 def init_twitter_api():
     global api
@@ -152,6 +152,9 @@ def process_tweets():
     
 
 def clean(thread, output_filename, files):
+    global mention_queue
+    # We mark the task as done so it deletes the element from the queue on disk
+    mention_queue.task_done()
     try:
         for comment in thread:
             if (hasattr(comment, 'evidence') and comment.evidence is not None):

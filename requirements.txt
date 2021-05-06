@@ -1,2 +1,3 @@
 # tweepy
 git+https://github.com/tweepy/tweepy
+persist-queue
