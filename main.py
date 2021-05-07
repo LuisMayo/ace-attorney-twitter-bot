@@ -111,7 +111,7 @@ def process_tweets():
                     characters = anim.get_characters(most_common)
                     output_filename = tweet.id_str + '.mp4'
                     anim.comments_to_scene(thread, characters, name_music = music_tweet, output_filename=output_filename)
-                    files = splitter.split_by_seconds(output_filename, 140)
+                    files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
                     reply_to_tweet = tweet
                     try:
                         for file_name in files:
