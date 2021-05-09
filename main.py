@@ -10,6 +10,7 @@ import os
 from persistqueue import Queue
 import threading
 import random
+import settings
 
 import anim
 from comment_list_brige import Comment
@@ -93,6 +94,7 @@ def process_tweets():
                     print(musicerror)
             else:
                 # In the case of Quotes I have to check for its presence instead of whether its None because Twitter API designers felt creative that week
+                i = 0
                 while (current_tweet is not None) and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
                     try:
                         current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
@@ -100,6 +102,10 @@ def process_tweets():
                         users_to_names[current_tweet.author.screen_name] = current_tweet.author.name
                         counter.update({current_tweet.author.screen_name: 1})  
                         thread.insert(0, Comment(current_tweet))
+                        i += 1
+                        if (current_tweet is not None and i >= settings.MAX_TWEETS_PER_THREAD):
+                            current_tweet = None
+                            api.update_status('@' + tweet.author.screen_name + f' Sorry, the thread was too long, I\'ve only retrieved {i} tweets', in_reply_to_status_id=tweet.id_str)
                     except tweepy.error.TweepError as e:
                         try:
                             api.update_status('@' + tweet.author.screen_name + ' I\'m sorry. I wasn\'t able to retrieve the full thread. Deleted tweets or private accounts may exist', in_reply_to_status_id=tweet.id_str)
