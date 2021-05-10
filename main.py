@@ -14,24 +14,10 @@ import settings
 
 import anim
 from comment_list_brige import Comment
-from datetime import datetime
 splitter = __import__("ffmpeg-split")
 
 mention_queue = Queue('queue')
 
-def init_twitter_api():
-    global api
-    global main_api # This is used to retrieve the notifications
-    global next_account
-    auth = tweepy.OAuthHandler(keys[next_account]['consumerApiKey'], keys[next_account]['consumerApiSecret'])
-    auth.set_access_token(keys[next_account]['accessToken'], keys[next_account]['accessTokenSecret'])
-    api = tweepy.API(auth)
-    if ('main_api' not in globals() or main_api is None):
-        auth = tweepy.OAuthHandler(keys[0]['consumerApiKey'], keys[0]['consumerApiSecret'])
-        auth.set_access_token(keys[0]['accessToken'], keys[0]['accessTokenSecret'])
-        main_api = tweepy.API(auth)
-    next_account += 1
-    next_account = next_account % len(keys)
 
 def sanitize_tweet(tweet):
     tweet.full_text = re.sub(r'^(@\S+ )+', '', tweet.full_text)
@@ -55,7 +41,7 @@ def check_mentions():
     global mention_queue
     while True:
         try:
-            mentions = main_api.mentions_timeline(count='200', tweet_mode="extended") if lastId == None else main_api.mentions_timeline(since_id=lastId, count='200', tweet_mode="extended")
+            mentions = api.mentions_timeline(count='200', tweet_mode="extended") if lastId == None else api.mentions_timeline(since_id=lastId, count='200', tweet_mode="extended")
             if len(mentions) > 0:
                 lastId = mentions[0].id_str
                 for tweet in mentions[::-1]:
@@ -69,7 +55,6 @@ def check_mentions():
 
 def process_tweets():
     global mention_queue
-    global lastTime
     while True:
         try:
             tweet = mention_queue.get()
@@ -130,13 +115,7 @@ def process_tweets():
                                 print("I'm Rated-limited :(")
                                 limit = True
                                 mention_queue.put(tweet)
-                                current_date = datetime.now(tz=None)
-                                if ('lastTime' in globals() and lastTime is not None and (current_date - lastTime).seconds < 300 ):
-                                    time.sleep(900)
-                                    print("I'm double rate limited")
-                                else:
-                                    init_twitter_api()
-                                lastTime = datetime.now(tz=None)
+                                time.sleep(900)
                         except Exception as parsexc:
                             print(parsexc)
                         try:
@@ -197,8 +176,9 @@ except FileNotFoundError:
     lastId = None
 
 # Init
-next_account = 0
-init_twitter_api()
+auth = tweepy.OAuthHandler(keys['consumerApiKey'], keys['consumerApiSecret'])
+auth.set_access_token(keys['accessToken'], keys['accessTokenSecret'])
+api = tweepy.API(auth)
 producer = threading.Thread(target=check_mentions)
 consumer = threading.Thread(target=process_tweets)
 threading.Thread(target=process_tweets).start()
