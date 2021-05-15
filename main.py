@@ -17,6 +17,7 @@ from objection_engine.renderer import render_comment_list
 splitter = __import__("ffmpeg-split")
 
 mention_queue = Queue('queue')
+delete_queue = Queue('delete')
 
 
 def sanitize_tweet(tweet):
@@ -27,13 +28,13 @@ def update_id(id):
     with open('id.txt', 'w') as idFile:
         idFile.write(id)
 
-def postVideoTweet(reply_id, reply_name, filename):
+def postVideoTweet(reply_id, reply_name, filename, text):
     uploaded_media = api.media_upload(filename, media_category='TWEET_VIDEO')
     while (uploaded_media.processing_info['state'] == 'pending'):
         time.sleep(uploaded_media.processing_info['check_after_secs'])
         uploaded_media = api.get_media_upload_status(uploaded_media.media_id_string)
     time.sleep(10)
-    return api.update_status('@' + reply_name + ' ', in_reply_to_status_id=reply_id, media_ids=[uploaded_media.media_id_string])
+    return api.update_status('@' + reply_name + ' ' + text, in_reply_to_status_id=reply_id, media_ids=[uploaded_media.media_id_string])
 
 
 def check_mentions():
@@ -48,10 +49,16 @@ def check_mentions():
                     if 'render' in tweet.full_text:
                         mention_queue.put(tweet)
                         print(mention_queue.qsize())
+                    if 'delete' in tweet.full_text:
+                        delete_queue.put(tweet)
                 update_id(lastId)
         except Exception as e:
             print(e)
         time.sleep(20)
+
+def process_deletions():
+    global delete_queue
+
 
 def process_tweets():
     global mention_queue
@@ -102,7 +109,7 @@ def process_tweets():
                     reply_to_tweet = tweet
                     try:
                         for file_name in files:
-                            reply_to_tweet = postVideoTweet(reply_to_tweet.id_str, reply_to_tweet.author.screen_name, file_name)
+                            reply_to_tweet = postVideoTweet(reply_to_tweet.id_str, reply_to_tweet.author.screen_name, file_name, tweet_text)
                     except tweepy.error.TweepError as e:
                         limit = False
                         try:
