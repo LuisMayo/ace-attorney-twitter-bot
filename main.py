@@ -148,15 +148,6 @@ def clean(thread, output_filename, files):
     except Exception as second_e:
         print(second_e)
 
-def restore_account():
-    global mention_queue
-    global next_account
-    while True:
-        mention_queue.join()
-        next_account = 0
-        init_twitter_api()
-        time.sleep(10)
-
 
 ################################## Main
 
@@ -178,6 +169,5 @@ api = tweepy.API(auth)
 producer = threading.Thread(target=check_mentions)
 consumer = threading.Thread(target=process_tweets)
 threading.Thread(target=process_tweets).start()
-threading.Thread(target=restore_account).start()
 producer.start()
 consumer.start()
