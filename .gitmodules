@@ -1,7 +1,6 @@
-[submodule "ace-attorney-reddit-bot"]
-	path = ace-attorney-reddit-bot
-	url = https://github.com/LuisMayo/ace-attorney-bot
-	branch = main
 [submodule "video-splitter"]
 	path = video-splitter
 	url = https://github.com/LuisMayo/video-splitter
+[submodule "objection_engine"]
+	path = objection_engine
+	url = https://github.com/LuisMayo/objection_engine

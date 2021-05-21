@@ -1,21 +1,19 @@
 import requests
+from objection_engine.beans.comment import Comment as obj_comment
 
 class Comment:
-  def __init__(self, tweet):
-    self.author = Author(tweet.user.name)
-    self.body = tweet.full_text
-    if (len(self.body) == 0):
-        self.body = '...'
-    self.score = 0
-    if (hasattr(tweet,'extended_entities') and tweet.extended_entities is not None
-    and 'media' in tweet.extended_entities and len(tweet.extended_entities['media']) > 0):
-        url = tweet.extended_entities['media'][0]['media_url_https'] + '?format=png&name=small'
-        name = tweet.extended_entities['media'][0]['media_url_https'].split('/')[-1] + '.png'
-        response = requests.get(url)
-        with open(name, 'wb') as file:
-            file.write(response.content)
-        self.evidence = name
-
-class Author:
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, tweet):
+        self.author_name = tweet.user.name
+        self.author_id = tweet.user.id_str
+        self.body = tweet.full_text
+        self.evidence = None
+        if (hasattr(tweet,'extended_entities') and tweet.extended_entities is not None
+        and 'media' in tweet.extended_entities and len(tweet.extended_entities['media']) > 0):
+            url = tweet.extended_entities['media'][0]['media_url_https'] + '?format=png&name=small'
+            name = tweet.extended_entities['media'][0]['media_url_https'].split('/')[-1] + '.png'
+            response = requests.get(url)
+            with open(name, 'wb') as file:
+                file.write(response.content)
+            self.evidence = name
+    def to_message(self) -> obj_comment:
+        return obj_comment(user_id=self.author_id, user_name = self.author_name, text_content=self.body, evidence_path=self.evidence)

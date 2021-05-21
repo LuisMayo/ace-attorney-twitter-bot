@@ -1,6 +1,6 @@
 import sys
 import json
-sys.path.append('./ace-attorney-reddit-bot')
+sys.path.append('./objection_engine')
 sys.path.append('./video-splitter')
 from collections import Counter 
 import tweepy
@@ -12,8 +12,8 @@ import threading
 import random
 import settings
 
-import anim
 from comment_list_brige import Comment
+from objection_engine.renderer import render_comment_list
 splitter = __import__("ffmpeg-split")
 
 mention_queue = Queue('queue')
@@ -84,9 +84,7 @@ def process_tweets():
                     try:
                         current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
                         sanitize_tweet(current_tweet)
-                        users_to_names[current_tweet.author.screen_name] = current_tweet.author.name
-                        counter.update({current_tweet.author.screen_name: 1})  
-                        thread.insert(0, Comment(current_tweet))
+                        thread.insert(0, Comment(current_tweet).to_message())
                         i += 1
                         if (current_tweet is not None and i >= settings.MAX_TWEETS_PER_THREAD):
                             current_tweet = None
@@ -97,11 +95,9 @@ def process_tweets():
                         except Exception as second_error:
                             print (second_error)
                         current_tweet = None
-                if (len(users_to_names) >= 2):
-                    most_common = [users_to_names[t[0]] for t in counter.most_common()]
-                    characters = anim.get_characters(most_common)
+                if (len(thread) >= 1):
                     output_filename = tweet.id_str + '.mp4'
-                    anim.comments_to_scene(thread, characters, name_music = music_tweet, output_filename=output_filename)
+                    render_comment_list(thread, music_code= music_tweet, output_filename=output_filename)
                     files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
                     reply_to_tweet = tweet
                     try:
@@ -127,7 +123,7 @@ def process_tweets():
                     clean(thread, output_filename, files)
                 else:
                     try:
-                        api.update_status('@' + tweet.author.screen_name + " There should be at least two people in the conversation", in_reply_to_status_id=tweet.id_str)
+                        api.update_status('@' + tweet.author.screen_name + " There should be at least one person in the conversation", in_reply_to_status_id=tweet.id_str)
                     except Exception as e:
                         print(e)
             time.sleep(1)
