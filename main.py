@@ -105,7 +105,7 @@ def process_tweets():
                             hate_detections += 1
                         if hate_detections >= 2:
                             api.update_status('@' + tweet.author.screen_name + ' I\'m sorry. The thread may contain unwanted topics and I refuse to render them.', in_reply_to_status_id=tweet.id_str)
-                            clean(thread, None, None)
+                            clean(thread, None, [])
                             thread = []
                             break
                         thread.insert(0, Comment(current_tweet).to_message())
@@ -149,7 +149,7 @@ def process_tweets():
                     clean(thread, output_filename, files)
             time.sleep(1)
         except Exception as e:
-            clean(thread, output_filename, [])
+            clean(thread, None, [])
             print(e)
     
 
@@ -166,6 +166,11 @@ def clean(thread, output_filename, files):
     try:
         for file_name in files:
             os.remove(file_name)
+    except Exception as second_e:
+        print(second_e)
+    try:
+        if output_filename is not None:
+            os.remove(output_filename)
     except Exception as second_e:
         print(second_e)
 
