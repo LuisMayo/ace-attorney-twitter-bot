@@ -87,11 +87,13 @@ def process_tweets():
             else:
                 # In the case of Quotes I have to check for its presence instead of whether its None because Twitter API designers felt creative that week
                 i = 0
+                user_names = set()
                 while (current_tweet is not None) and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
                     try:
                         current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
                         sanitize_tweet(current_tweet)
                         thread.insert(0, Comment(current_tweet).to_message())
+                        user_names.add(current_tweet.user.screen_name)
                         i += 1
                         if (current_tweet is not None and i >= settings.MAX_TWEETS_PER_THREAD):
                             current_tweet = None
@@ -103,6 +105,7 @@ def process_tweets():
                             print (second_error)
                         current_tweet = None
                 if (len(thread) >= 1):
+                    tweet_text = "Your video is ready. Featuring @" + " @".join(list(user_names)) + " . Do you want it removed? contact @LuisMayoV "
                     output_filename = tweet.id_str + '.mp4'
                     render_comment_list(thread, music_code= music_tweet, output_filename=output_filename)
                     files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
