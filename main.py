@@ -11,18 +11,28 @@ from persistqueue import Queue
 import threading
 import random
 import settings
-
+from hatesonar import Sonar
+from better_profanity import profanity
 from comment_list_brige import Comment
 from objection_engine.renderer import render_comment_list
 splitter = __import__("ffmpeg-split")
 
+sonar = Sonar()
 mention_queue = Queue('queue')
 delete_queue = Queue('delete')
+profanity.load_censor_words_from_file('banlist.txt')
+
 
 
 def sanitize_tweet(tweet):
     tweet.full_text = re.sub(r'^(@\S+ )+', '', tweet.full_text)
     tweet.full_text = re.sub(r'(https)\S*', '(link)', tweet.full_text)
+    sonar_prediction = sonar.ping(tweet.full_text)
+    hate_classification = next((x for x in sonar_prediction['classes']  if x['class_name'] == 'hate_speech'), None)
+    if (hate_classification["confidence"] > 0.6):
+        tweet.full_text = '...'
+    tweet.full_text = profanity.censor(tweet.full_text)
+    return hate_classification["confidence"] > 0.8
 
 def update_id(id):
     with open('id.txt', 'w') as idFile:
@@ -87,11 +97,19 @@ def process_tweets():
             else:
                 # In the case of Quotes I have to check for its presence instead of whether its None because Twitter API designers felt creative that week
                 i = 0
+                # If we have 2 hate detections we stop rendering the video all together
+                hate_detections = 0
                 user_names = set()
                 while (current_tweet is not None) and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
                     try:
                         current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
-                        sanitize_tweet(current_tweet)
+                        if sanitize_tweet(current_tweet):
+                            hate_detections += 1
+                        if hate_detections >= 2:
+                            api.update_status('@' + tweet.author.screen_name + ' I\'m sorry. The thread may contain unwanted topics and I refuse to render them.', in_reply_to_status_id=tweet.id_str)
+                            clean(thread, None, None)
+                            thread = []
+                            break
                         thread.insert(0, Comment(current_tweet).to_message())
                         user_names.add(current_tweet.user.screen_name)
                         i += 1
@@ -131,11 +149,6 @@ def process_tweets():
                             print(second_error)
                         print(e)
                     clean(thread, output_filename, files)
-                else:
-                    try:
-                        api.update_status('@' + tweet.author.screen_name + " There should be at least one person in the conversation", in_reply_to_status_id=tweet.id_str)
-                    except Exception as e:
-                        print(e)
             time.sleep(1)
         except Exception as e:
             clean(thread, output_filename, [])

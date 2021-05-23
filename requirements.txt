@@ -1,3 +1,5 @@
 # tweepy
 git+https://github.com/tweepy/tweepy
 persist-queue
+better_profanity==0.6.1
+hatesonar
