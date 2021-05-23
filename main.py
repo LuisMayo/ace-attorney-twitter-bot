@@ -76,8 +76,6 @@ def process_tweets():
         try:
             tweet = mention_queue.get()
             thread = []
-            users_to_names = {} # This will serve to link @display_names with usernames
-            counter = Counter()
             current_tweet = tweet
             songs = ['PWR', 'JFA', 'TAT', 'rnd']
             
