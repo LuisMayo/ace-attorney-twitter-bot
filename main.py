@@ -121,7 +121,7 @@ def process_tweets():
                             print (second_error)
                         current_tweet = None
                 if (len(thread) >= 1):
-                    tweet_text = "Your video is ready. Featuring @" + " @".join(list(user_names)) + " . Do you want it removed? contact @LuisMayoV "
+                    tweet_text = "Your video is ready. Featuring @" + " @".join(list(user_names)) + " . Do you want it removed? contact @/LuisMayoV "
                     output_filename = tweet.id_str + '.mp4'
                     render_comment_list(thread, music_code= music_tweet, output_filename=output_filename)
                     files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
