@@ -38,13 +38,13 @@ def update_id(id):
     with open('id.txt', 'w') as idFile:
         idFile.write(id)
 
-def postVideoTweet(reply_id, reply_name, filename, text):
+def postVideoTweet(reply_id, filename):
     uploaded_media = api.media_upload(filename, media_category='TWEET_VIDEO')
     while (uploaded_media.processing_info['state'] == 'pending'):
         time.sleep(uploaded_media.processing_info['check_after_secs'])
         uploaded_media = api.get_media_upload_status(uploaded_media.media_id_string)
     time.sleep(10)
-    return api.update_status('@' + reply_name + ' ' + text, in_reply_to_status_id=reply_id, media_ids=[uploaded_media.media_id_string])
+    return api.update_status('Your video is ready. Do you want it removed? contact @/LuisMayoV', in_reply_to_status_id=reply_id, auto_populate_reply_metadata = True, media_ids=[uploaded_media.media_id_string])
 
 
 def check_mentions():
@@ -97,7 +97,6 @@ def process_tweets():
                 i = 0
                 # If we have 2 hate detections we stop rendering the video all together
                 hate_detections = 0
-                user_names = set()
                 while (current_tweet is not None) and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
                     try:
                         current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
@@ -109,7 +108,6 @@ def process_tweets():
                             thread = []
                             break
                         thread.insert(0, Comment(current_tweet).to_message())
-                        user_names.add(current_tweet.user.screen_name)
                         i += 1
                         if (current_tweet is not None and i >= settings.MAX_TWEETS_PER_THREAD):
                             current_tweet = None
@@ -121,14 +119,13 @@ def process_tweets():
                             print (second_error)
                         current_tweet = None
                 if (len(thread) >= 1):
-                    tweet_text = "Your video is ready. Featuring @" + " @".join(list(user_names)) + " . Do you want it removed? contact @/LuisMayoV "
                     output_filename = tweet.id_str + '.mp4'
                     render_comment_list(thread, music_code= music_tweet, output_filename=output_filename)
                     files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
                     reply_to_tweet = tweet
                     try:
                         for file_name in files:
-                            reply_to_tweet = postVideoTweet(reply_to_tweet.id_str, reply_to_tweet.author.screen_name, file_name, tweet_text)
+                            reply_to_tweet = postVideoTweet(reply_to_tweet.id_str, file_name)
                     except tweepy.error.TweepError as e:
                         limit = False
                         try:
