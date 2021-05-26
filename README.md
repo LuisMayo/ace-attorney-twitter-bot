@@ -23,7 +23,7 @@ git clone --recursive https://github.com/LuisMayo/ace-attorney-twitter-bot
 Install dependencies of this repo and the child repo
 ``` bash
 python -m pip install -r requirements.txt
-python -m pip install -r ace-attorney-reddit-bot/requirements.txt
+python -m pip install -r objection_engine/requirements.txt
 ```
 Copy keys-dummy.json into keys.json and fill the required settings with the access keys you should've obtained from Twitter's Developer portal
 
