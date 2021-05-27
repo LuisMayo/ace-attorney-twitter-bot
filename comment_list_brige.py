@@ -1,13 +1,18 @@
 import requests
+from bs4 import BeautifulSoup
 from objection_engine.beans.comment import Comment as obj_comment
 
 
 class Comment:
     def __init__(self, stat):
-        self.author_name = stat["account"]["display_name"]
+        self.author_name = stat["account"]["username"]
         self.author_id = stat["account"]["id"]
         self.body = stat["content"]
         self.evidence = None
+
+        soup = BeautifulSoup(stat["content"])
+        self.body = soup.get_text()
+
         if len(stat["media_attachments"]) > 0:
             first = stat["media_attachments"][0]
             if first["type"] == "image":

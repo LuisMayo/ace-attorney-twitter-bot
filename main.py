@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append('./objection_engine')
 sys.path.append('./video-splitter')
 import time
@@ -10,7 +11,6 @@ import settings
 from comment_list_brige import Comment
 from objection_engine.renderer import render_comment_list
 from mastodon import Mastodon
-
 
 splitter = __import__("ffmpeg-split")
 
@@ -29,19 +29,19 @@ def check_mentions():
     while True:
         try:
             if lastId is None:
-                mentions = mastodon.notifications(mentions_only=True)
+                mentions = mastodon.notifications(mentions_only=True)[::-1]
             else:
-                mentions = mastodon.notifications(since_id=lastId, mentions_only=True)
+                mentions = mastodon.notifications(since_id=lastId, mentions_only=True)[::-1]
             if len(mentions) > 0:
                 for mention in mentions:
                     lastId = mention["id"]
                     status_id = mention["status"]["id"]
                     status_dict = mastodon.status(status_id)
-                    #print("Id: " + str(status_id) + " content: " + status_dict["content"])
+                    # print("Id: " + str(status_id) + " content: " + status_dict["content"])
                     if 'render' in status_dict["content"]:
                         mention_queue.put(status_dict)
                         print(mention_queue.qsize())
-                    #if 'delete' in tweet.full_text:
+                    # if 'delete' in tweet.full_text:
                     #    delete_queue.put(tweet)
                 update_id(str(lastId))
         except Exception as e:
@@ -59,10 +59,8 @@ def process_tweets():
         thread = []
         try:
             status = mention_queue.get()
-            #print(mastodon.status_context(status["id"])["ancestors"])
+            # print(mastodon.status_context(status["id"])["ancestors"])
             thread_dicts = mastodon.status_context(status["id"])["ancestors"][::-1]
-            #print(thread_dicts)
-            current_status = status
             songs = ['PWR', 'JFA', 'TAT', 'rnd']
 
             if 'music=' in status["content"]:
@@ -75,36 +73,37 @@ def process_tweets():
 
             if music_stat not in songs:  # If the music is written badly in the mention tweet, the bot will remind how to write it properly
                 try:
-                    mastodon.status_post(
-                        '@' + status["account"]["acct"] + ' The music argument format is incorrect. The posibilities are: \nPWR: Phoenix Wright Ace Attorney \nJFA: Justice for All \nTAT: Trials and Tribulations \nrnd: Random',
-                        in_reply_to_status_id=status["id"])
+                    mastodon.status_reply(status, 'BROKEN. Dont select music! The music argument format is incorrect. The possibilities '
+                                                  'are: \nPWR: Phoenix Wright Ace Attorney \nJFA: '
+                                                  'Justice for '
+                                                  'All \nTAT: Trials and Tribulations \nrnd: Random')
                 except Exception as musicerror:
                     print(musicerror)
             else:
-                while len(thread_dicts) > 0:
-                    for post in thread_dicts:
-                        current_status = post
-                        thread.insert(0, Comment(current_status).to_message())
-                        thread_dicts.pop(0)
+                for post in thread_dicts:
+                    current_status = post
+                    thread.insert(0, Comment(current_status).to_message())
 
                 if len(thread) >= 1:
                     output_filename = str(status["id"]) + '.mp4'
                     render_comment_list(thread, music_code=music_stat, output_filename=output_filename)
                     files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
+
                     try:
+                        # media = mastodon.media_post(output_filename)
+                        # mastodon.status_reply(status, "Here's the court session", media_ids=media)
                         for file_name in files:
+                            #    print("trying media")
                             media = mastodon.media_post(file_name)
-                            mastodon.status_reply(status["id"], "Here's the court session", media_ids=media)
-                    except:
-                        limit = False
-                        try:
-                            print("Can't post")
-                            limit = True
-                            mention_queue.put(status)
-                            time.sleep(900)
-                        except Exception as parsexc:
-                            print(parsexc)
+                            #    print("trying status")
+                            mastodon.status_reply(status, "Here's the court session", media_ids=media)
+                        #    mastodon.status_post("Here's the court session", in_reply_to_id=status["id"], media_ids=media)
+                        #    print("tried status")
+                    except Exception as e:
                         print(e)
+                        print("Can't post")
+                        mention_queue.put(status)
+                        time.sleep(600)
                     clean(thread, output_filename, files)
             time.sleep(1)
         except Exception as e:

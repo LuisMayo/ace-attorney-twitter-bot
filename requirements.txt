@@ -1,2 +1,3 @@
 Mastodon.py
 persist-queue
+beautifulsoup4
