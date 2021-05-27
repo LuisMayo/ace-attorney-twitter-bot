@@ -1,5 +1,4 @@
 import sys
-import json
 
 sys.path.append('./objection_engine')
 sys.path.append('./video-splitter')
@@ -43,20 +42,21 @@ def check_mentions():
     while True:
         try:
             if lastId is None:
-                mentions = mastodon.notifications(limit='100', mentions_only=True)
+                mentions = mastodon.notifications(mentions_only=True)
             else:
-                mentions = mastodon.notifications(since_id=lastId, limit='100', mentions_only=True)
+                mentions = mastodon.notifications(since_id=lastId, mentions_only=True)
             if len(mentions) > 0:
-                for status in mentions:
-                    lastId = status["id"]
-                    status_dict = mastodon.status(lastId)
+                for mention in mentions:
+                    lastId = mention["id"]
+                    status_id = mention["status"]["id"]
+                    status_dict = mastodon.status(status_id)
+                    #print("Id: " + str(status_id) + " content: " + status_dict["content"])
                     if 'render' in status_dict["content"]:
-                        mention_queue.put(status_dict.copy())
-                        print("Id: " + status["id"] + "content: " + status_dict["content"])
+                        mention_queue.put(status_dict.deepcopy())
                         print(mention_queue.qsize())
                     #if 'delete' in tweet.full_text:
                     #    delete_queue.put(tweet)
-                update_id(lastId)
+                update_id(str(lastId))
         except Exception as e:
             print(e)
         time.sleep(20)
@@ -70,57 +70,39 @@ def process_tweets():
     global mention_queue
     while True:
         try:
-            tweet = mention_queue.get()
+            status = mention_queue.get()
+            thread_dicts = mastodon.status_context["ancestors"].reverse()
             thread = []
-            current_tweet = tweet
+            current_status = status
             songs = ['PWR', 'JFA', 'TAT', 'rnd']
 
-            if 'music=' in tweet.full_text:
-                music_tweet = tweet.full_text.split('music=', 1)[1][:3]
+            if 'music=' in status["content"]:
+                music_stat = status["content"].split('music=', 1)[1][:3]
             else:
-                music_tweet = 'PWR'
+                music_stat = 'PWR'
 
-            if music_tweet == 'rnd':
-                music_tweet = random.choices(songs, [1, 1, 1, 0], k=1)[0]
+            if music_stat == 'rnd':
+                music_stat = random.choices(songs, [1, 1, 1, 0], k=1)[0]
 
-            if music_tweet not in songs:  # If the music is written badly in the mention tweet, the bot will remind how to write it properly
+            if music_stat not in songs:  # If the music is written badly in the mention tweet, the bot will remind how to write it properly
                 try:
-                    api.update_status(
-                        '@' + tweet.author.screen_name + ' The music argument format is incorrect. The posibilities are: \nPWR: Phoenix Wright Ace Attorney \nJFA: Justice for All \nTAT: Trials and Tribulations \nrnd: Random',
-                        in_reply_to_status_id=tweet.id_str)
+                    mastodon.status_post(
+                        '@' + status["account"]["acct"] + ' The music argument format is incorrect. The posibilities are: \nPWR: Phoenix Wright Ace Attorney \nJFA: Justice for All \nTAT: Trials and Tribulations \nrnd: Random',
+                        in_reply_to_status_id=status["id"])
                 except Exception as musicerror:
                     print(musicerror)
             else:
-                # In the case of Quotes I have to check for its presence instead of whether its None because Twitter API designers felt creative that week
-                i = 0
-                # If we have 2 hate detections we stop rendering the video all together
-                hate_detections = 0
-                while (current_tweet is not None) and (
-                        current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
-                    try:
-                        current_tweet = api.get_status(
-                            current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str,
-                            tweet_mode="extended")
-                        thread.insert(0, Comment(current_tweet).to_message())
-                        i += 1
-                        if (current_tweet is not None and i >= settings.MAX_TWEETS_PER_THREAD):
-                            current_tweet = None
-                            api.update_status(
-                                '@' + tweet.author.screen_name + f' Sorry, the thread was too long, I\'ve only retrieved {i} tweets',
-                                in_reply_to_status_id=tweet.id_str)
-                    except tweepy.error.TweepError as e:
-                        try:
-                            api.update_status(
-                                '@' + tweet.author.screen_name + ' I\'m sorry. I wasn\'t able to retrieve the full thread. Deleted tweets or private accounts may exist',
-                                in_reply_to_status_id=tweet.id_str)
-                        except Exception as second_error:
-                            print(second_error)
-                        current_tweet = None
-                if (len(thread) >= 1):
+                while len(thread_dicts) > 0:
+                    for post in thread_dicts:
+                        current_status = post.deepcopy()
+                        thread.insert(0, Comment(current_status).to_message())
+                        thread_dicts.pop(0)
+
+                if len(thread) >= 1:
                     output_filename = tweet.id_str + '.mp4'
-                    render_comment_list(thread, music_code=music_tweet, output_filename=output_filename)
+                    render_comment_list(thread, music_code=music_stat, output_filename=output_filename)
                     files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
-                    reply_to_tweet = tweet
+                    reply_to_tweet = status
                     try:
                         for file_name in files:
                             reply_to_tweet = postVideoTweet(reply_to_tweet.id_str, file_name)
@@ -128,7 +110,7 @@ def process_tweets():
                         limit = False
                         try:
                             print(e.api_code)
-                            if (e.api_code == 185):
+                            if e.api_code == 185:
                                 print("I'm Rated-limited :(")
                                 limit = True
                                 mention_queue.put(tweet)
@@ -202,8 +184,10 @@ if __name__ == "__main__":
         lastId = None
 
     # Init
+    print("init")
+
     producer = threading.Thread(target=check_mentions)
     consumer = threading.Thread(target=process_tweets)
     threading.Thread(target=process_tweets).start()
     producer.start()
-    #consumer.start()
+    consumer.start()

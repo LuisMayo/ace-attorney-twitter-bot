@@ -2,10 +2,10 @@ import requests
 from objection_engine.beans.comment import Comment as obj_comment
 
 class Comment:
-    def __init__(self, tweet):
-        self.author_name = tweet.user.name
-        self.author_id = tweet.user.id_str
-        self.body = tweet.full_text
+    def __init__(self, stat):
+        self.author_name = stat["account"]["display_name"]
+        self.author_id = stat["account"]["id"]
+        self.body = stat["content"]
         self.evidence = None
         if (hasattr(tweet,'extended_entities') and tweet.extended_entities is not None
         and 'media' in tweet.extended_entities and len(tweet.extended_entities['media']) > 0):
