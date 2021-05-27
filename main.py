@@ -1,9 +1,9 @@
 import sys
 import json
+
 sys.path.append('./objection_engine')
 sys.path.append('./video-splitter')
-from collections import Counter 
-import tweepy
+from collections import Counter
 import re
 import time
 import os
@@ -11,40 +11,30 @@ from persistqueue import Queue
 import threading
 import random
 import settings
-from hatesonar import Sonar
-from better_profanity import profanity
 from comment_list_brige import Comment
 from objection_engine.renderer import render_comment_list
+from mastodon import Mastodon
+
 splitter = __import__("ffmpeg-split")
 
-sonar = Sonar()
 mention_queue = Queue('queue')
 delete_queue = Queue('delete')
-profanity.load_censor_words_from_file('banlist.txt')
 
-
-
-def sanitize_tweet(tweet):
-    tweet.full_text = re.sub(r'^(@\S+ )+', '', tweet.full_text)
-    tweet.full_text = re.sub(r'(https)\S*', '(link)', tweet.full_text)
-    sonar_prediction = sonar.ping(tweet.full_text)
-    hate_classification = next((x for x in sonar_prediction['classes']  if x['class_name'] == 'hate_speech'), None)
-    if (hate_classification["confidence"] > 0.6):
-        tweet.full_text = '...'
-    tweet.full_text = profanity.censor(tweet.full_text)
-    return hate_classification["confidence"] > 0.8
 
 def update_id(id):
     with open('id.txt', 'w') as idFile:
         idFile.write(id)
 
+
 def postVideoTweet(reply_id, filename):
     uploaded_media = api.media_upload(filename, media_category='TWEET_VIDEO')
-    while (uploaded_media.processing_info['state'] == 'pending'):
+    while uploaded_media.processing_info['state'] == 'pending':
         time.sleep(uploaded_media.processing_info['check_after_secs'])
         uploaded_media = api.get_media_upload_status(uploaded_media.media_id_string)
     time.sleep(10)
-    return api.update_status('Your video is ready. Do you want it removed? contact @/LuisMayoV', in_reply_to_status_id=reply_id, auto_populate_reply_metadata = True, media_ids=[uploaded_media.media_id_string])
+    return api.update_status('Your video is ready. Do you want it removed? contact @/LuisMayoV',
+                             in_reply_to_status_id=reply_id, auto_populate_reply_metadata=True,
+                             media_ids=[uploaded_media.media_id_string])
 
 
 def check_mentions():
@@ -52,7 +42,9 @@ def check_mentions():
     global mention_queue
     while True:
         try:
-            mentions = api.mentions_timeline(count='200', tweet_mode="extended") if lastId == None else api.mentions_timeline(since_id=lastId, count='200', tweet_mode="extended")
+            mentions = api.mentions_timeline(count='200',
+                                             tweet_mode="extended") if lastId == None else api.mentions_timeline(
+                since_id=lastId, count='200', tweet_mode="extended")
             if len(mentions) > 0:
                 lastId = mentions[0].id_str
                 for tweet in mentions[::-1]:
@@ -66,6 +58,7 @@ def check_mentions():
             print(e)
         time.sleep(20)
 
+
 def process_deletions():
     global delete_queue
 
@@ -78,18 +71,20 @@ def process_tweets():
             thread = []
             current_tweet = tweet
             songs = ['PWR', 'JFA', 'TAT', 'rnd']
-            
+
             if 'music=' in tweet.full_text:
                 music_tweet = tweet.full_text.split('music=', 1)[1][:3]
             else:
                 music_tweet = 'PWR'
-                
+
             if music_tweet == 'rnd':
                 music_tweet = random.choices(songs, [1, 1, 1, 0], k=1)[0]
-            
-            if music_tweet not in songs: # If the music is written badly in the mention tweet, the bot will remind how to write it properly
+
+            if music_tweet not in songs:  # If the music is written badly in the mention tweet, the bot will remind how to write it properly
                 try:
-                    api.update_status('@' + tweet.author.screen_name + ' The music argument format is incorrect. The posibilities are: \nPWR: Phoenix Wright Ace Attorney \nJFA: Justice for All \nTAT: Trials and Tribulations \nrnd: Random', in_reply_to_status_id=tweet.id_str)
+                    api.update_status(
+                        '@' + tweet.author.screen_name + ' The music argument format is incorrect. The posibilities are: \nPWR: Phoenix Wright Ace Attorney \nJFA: Justice for All \nTAT: Trials and Tribulations \nrnd: Random',
+                        in_reply_to_status_id=tweet.id_str)
                 except Exception as musicerror:
                     print(musicerror)
             else:
@@ -97,30 +92,30 @@ def process_tweets():
                 i = 0
                 # If we have 2 hate detections we stop rendering the video all together
                 hate_detections = 0
-                while (current_tweet is not None) and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
+                while (current_tweet is not None) and (
+                        current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
                     try:
-                        current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
-                        if sanitize_tweet(current_tweet):
-                            hate_detections += 1
-                        if hate_detections >= 2:
-                            api.update_status('@' + tweet.author.screen_name + ' I\'m sorry. The thread may contain unwanted topics and I refuse to render them.', in_reply_to_status_id=tweet.id_str)
-                            clean(thread, None, [])
-                            thread = []
-                            break
+                        current_tweet = api.get_status(
+                            current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str,
+                            tweet_mode="extended")
                         thread.insert(0, Comment(current_tweet).to_message())
                         i += 1
                         if (current_tweet is not None and i >= settings.MAX_TWEETS_PER_THREAD):
                             current_tweet = None
-                            api.update_status('@' + tweet.author.screen_name + f' Sorry, the thread was too long, I\'ve only retrieved {i} tweets', in_reply_to_status_id=tweet.id_str)
+                            api.update_status(
+                                '@' + tweet.author.screen_name + f' Sorry, the thread was too long, I\'ve only retrieved {i} tweets',
+                                in_reply_to_status_id=tweet.id_str)
                     except tweepy.error.TweepError as e:
                         try:
-                            api.update_status('@' + tweet.author.screen_name + ' I\'m sorry. I wasn\'t able to retrieve the full thread. Deleted tweets or private accounts may exist', in_reply_to_status_id=tweet.id_str)
+                            api.update_status(
+                                '@' + tweet.author.screen_name + ' I\'m sorry. I wasn\'t able to retrieve the full thread. Deleted tweets or private accounts may exist',
+                                in_reply_to_status_id=tweet.id_str)
                         except Exception as second_error:
-                            print (second_error)
+                            print(second_error)
                         current_tweet = None
                 if (len(thread) >= 1):
                     output_filename = tweet.id_str + '.mp4'
-                    render_comment_list(thread, music_code= music_tweet, output_filename=output_filename)
+                    render_comment_list(thread, music_code=music_tweet, output_filename=output_filename)
                     files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
                     reply_to_tweet = tweet
                     try:
@@ -139,7 +134,8 @@ def process_tweets():
                             print(parsexc)
                         try:
                             if not limit:
-                                api.update_status('@' + tweet.author.screen_name + ' ' + str(e), in_reply_to_status_id=tweet.id_str)
+                                api.update_status('@' + tweet.author.screen_name + ' ' + str(e),
+                                                  in_reply_to_status_id=tweet.id_str)
                         except Exception as second_error:
                             print(second_error)
                         print(e)
@@ -148,7 +144,7 @@ def process_tweets():
         except Exception as e:
             clean(thread, None, [])
             print(e)
-    
+
 
 def clean(thread, output_filename, files):
     global mention_queue
@@ -156,7 +152,7 @@ def clean(thread, output_filename, files):
     mention_queue.task_done()
     try:
         for comment in thread:
-            if (hasattr(comment, 'evidence') and comment.evidence is not None):
+            if hasattr(comment, 'evidence') and comment.evidence is not None:
                 os.remove(comment.evidence)
     except Exception as second_e:
         print(second_e)
@@ -172,25 +168,39 @@ def clean(thread, output_filename, files):
         print(second_e)
 
 
-################################## Main
+if __name__ == "__main__":
+    if not os.path.exists('clientcred.secret'):
+        Mastodon.create_app(
+            'AceBot',
+            api_base_url=settings.INSTANCE_URL,
+            to_file='clientcred.secret'
+        )
+    if not os.path.exists('usercred.secret'):
+        mastodon = Mastodon(
+            client_id='clientcred.secret',
+            api_base_url=settings.INSTANCE_URL
+        )
+        mastodon.log_in(
+            settings.LOGIN,
+            settings.PASSWORD,
+            to_file='usercred.secret'
+        )
+    else:
+        mastodon = Mastodon(
+            access_token='usercred.secret',
+            api_base_url=settings.INSTANCE_URL
+        )
 
-# Load keys
-with open('keys.json', 'r') as keyfile:
-    keys = json.load(keyfile)
+    # Load last ID
+    try:
+        with open('id.txt', 'r') as idFile:
+            lastId = idFile.read()
+    except FileNotFoundError:
+        lastId = None
 
-# Load last ID
-try:
-    with open('id.txt', 'r') as idFile:
-        lastId = idFile.read()
-except FileNotFoundError:
-    lastId = None
-
-# Init
-auth = tweepy.OAuthHandler(keys['consumerApiKey'], keys['consumerApiSecret'])
-auth.set_access_token(keys['accessToken'], keys['accessTokenSecret'])
-api = tweepy.API(auth)
-producer = threading.Thread(target=check_mentions)
-consumer = threading.Thread(target=process_tweets)
-threading.Thread(target=process_tweets).start()
-producer.start()
-consumer.start()
+    # Init
+    producer = threading.Thread(target=check_mentions)
+    consumer = threading.Thread(target=process_tweets)
+    threading.Thread(target=process_tweets).start()
+    producer.start()
+    consumer.start()

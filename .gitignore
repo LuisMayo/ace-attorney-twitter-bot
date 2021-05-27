@@ -1,6 +1,10 @@
 id.txt
 keys.json
+clientcred.secret
+usercred.secret
 __pycache__/
 assets/
 queue/
 delete/
+venv/
+.idea/

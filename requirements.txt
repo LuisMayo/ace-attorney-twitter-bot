@@ -1,5 +1,2 @@
-# tweepy
-git+https://github.com/tweepy/tweepy
+Mastodon.py
 persist-queue
-better_profanity==0.6.1
-hatesonar
