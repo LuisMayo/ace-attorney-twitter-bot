@@ -42,17 +42,20 @@ def check_mentions():
     global mention_queue
     while True:
         try:
-            mentions = api.mentions_timeline(count='200',
-                                             tweet_mode="extended") if lastId == None else api.mentions_timeline(
-                since_id=lastId, count='200', tweet_mode="extended")
+            if lastId is None:
+                mentions = mastodon.notifications(limit='100', mentions_only=True)
+            else:
+                mentions = mastodon.notifications(since_id=lastId, limit='100', mentions_only=True)
             if len(mentions) > 0:
-                lastId = mentions[0].id_str
-                for tweet in mentions[::-1]:
-                    if 'render' in tweet.full_text:
-                        mention_queue.put(tweet)
+                for status in mentions:
+                    lastId = status["id"]
+                    status_dict = mastodon.status(lastId)
+                    if 'render' in status_dict["content"]:
+                        mention_queue.put(status_dict.copy())
+                        print("Id: " + status["id"] + "content: " + status_dict["content"])
                         print(mention_queue.qsize())
-                    if 'delete' in tweet.full_text:
-                        delete_queue.put(tweet)
+                    #if 'delete' in tweet.full_text:
+                    #    delete_queue.put(tweet)
                 update_id(lastId)
         except Exception as e:
             print(e)
@@ -203,4 +206,4 @@ if __name__ == "__main__":
     consumer = threading.Thread(target=process_tweets)
     threading.Thread(target=process_tweets).start()
     producer.start()
-    consumer.start()
+    #consumer.start()

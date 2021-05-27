@@ -1,5 +1,5 @@
 id.txt
-keys.json
+settings.py
 clientcred.secret
 usercred.secret
 __pycache__/
