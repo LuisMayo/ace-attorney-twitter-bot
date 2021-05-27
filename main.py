@@ -1,9 +1,6 @@
 import sys
-
 sys.path.append('./objection_engine')
 sys.path.append('./video-splitter')
-from collections import Counter
-import re
 import time
 import os
 from persistqueue import Queue
@@ -14,6 +11,7 @@ from comment_list_brige import Comment
 from objection_engine.renderer import render_comment_list
 from mastodon import Mastodon
 
+
 splitter = __import__("ffmpeg-split")
 
 mention_queue = Queue('queue')
@@ -23,17 +21,6 @@ delete_queue = Queue('delete')
 def update_id(id):
     with open('id.txt', 'w') as idFile:
         idFile.write(id)
-
-
-def postVideoTweet(reply_id, filename):
-    uploaded_media = api.media_upload(filename, media_category='TWEET_VIDEO')
-    while uploaded_media.processing_info['state'] == 'pending':
-        time.sleep(uploaded_media.processing_info['check_after_secs'])
-        uploaded_media = api.get_media_upload_status(uploaded_media.media_id_string)
-    time.sleep(10)
-    return api.update_status('Your video is ready. Do you want it removed? contact @/LuisMayoV',
-                             in_reply_to_status_id=reply_id, auto_populate_reply_metadata=True,
-                             media_ids=[uploaded_media.media_id_string])
 
 
 def check_mentions():
@@ -52,7 +39,7 @@ def check_mentions():
                     status_dict = mastodon.status(status_id)
                     #print("Id: " + str(status_id) + " content: " + status_dict["content"])
                     if 'render' in status_dict["content"]:
-                        mention_queue.put(status_dict.deepcopy())
+                        mention_queue.put(status_dict)
                         print(mention_queue.qsize())
                     #if 'delete' in tweet.full_text:
                     #    delete_queue.put(tweet)
@@ -69,10 +56,12 @@ def process_deletions():
 def process_tweets():
     global mention_queue
     while True:
+        thread = []
         try:
             status = mention_queue.get()
-            thread_dicts = mastodon.status_context["ancestors"].reverse()
-            thread = []
+            #print(mastodon.status_context(status["id"])["ancestors"])
+            thread_dicts = mastodon.status_context(status["id"])["ancestors"][::-1]
+            #print(thread_dicts)
             current_status = status
             songs = ['PWR', 'JFA', 'TAT', 'rnd']
 
@@ -94,35 +83,27 @@ def process_tweets():
             else:
                 while len(thread_dicts) > 0:
                     for post in thread_dicts:
-                        current_status = post.deepcopy()
+                        current_status = post
                         thread.insert(0, Comment(current_status).to_message())
                         thread_dicts.pop(0)
 
                 if len(thread) >= 1:
-                    output_filename = tweet.id_str + '.mp4'
+                    output_filename = str(status["id"]) + '.mp4'
                     render_comment_list(thread, music_code=music_stat, output_filename=output_filename)
                     files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
-                    reply_to_tweet = status
                     try:
                         for file_name in files:
-                            reply_to_tweet = postVideoTweet(reply_to_tweet.id_str, file_name)
-                    except tweepy.error.TweepError as e:
+                            media = mastodon.media_post(file_name)
+                            mastodon.status_reply(status["id"], "Here's the court session", media_ids=media)
+                    except:
                         limit = False
                         try:
-                            print(e.api_code)
-                            if e.api_code == 185:
-                                print("I'm Rated-limited :(")
-                                limit = True
-                                mention_queue.put(tweet)
-                                time.sleep(900)
+                            print("Can't post")
+                            limit = True
+                            mention_queue.put(status)
+                            time.sleep(900)
                         except Exception as parsexc:
                             print(parsexc)
-                        try:
-                            if not limit:
-                                api.update_status('@' + tweet.author.screen_name + ' ' + str(e),
-                                                  in_reply_to_status_id=tweet.id_str)
-                        except Exception as second_error:
-                            print(second_error)
                         print(e)
                     clean(thread, output_filename, files)
             time.sleep(1)
@@ -184,7 +165,6 @@ if __name__ == "__main__":
         lastId = None
 
     # Init
-    print("init")
 
     producer = threading.Thread(target=check_mentions)
     consumer = threading.Thread(target=process_tweets)
