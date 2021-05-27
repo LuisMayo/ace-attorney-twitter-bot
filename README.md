@@ -1,15 +1,14 @@
-# Ace Attorney twitter Bot
- Twitter bot that turns comment chains into ace attorney scenes. Inspired by and using https://github.com/micah5/ace-attorney-reddit-bot
- Currently being executed on [@aceCourtBot](https://twitter.com/aceCourtBot?s=09)
- 
- Check also the [Telegram](https://github.com/LuisMayo/ace-attorney-telegram-bot), [Discord](https://github.com/LuisMayo/ace-attorney-discord-bot) and [Reddit](https://github.com/micah5/ace-attorney-reddit-bot) bots!
+# Ace Attorney Mastodon Bot
+ Fork of [Ace Attorney Twitter bot](https://github.com/LuisMayo/ace-attorney-twitter-bot) that turns threads into Ace Attorney scenes, adapted for Mastodon and with "hate" detection removed
+
+
  
 ## Getting Started
 
 ### Prerequisites
 
  - Python 3
- - Twitter Credentials.
+ - Mastodon or Pleroma account.
  - Ace Attorney data. Download it [here](https://drive.google.com/drive/folders/1jNpnB3pjHFvOyrfZ-WxlOXNaZ-XH4INx?usp=sharing) and put them in `./assets/`
  
  
@@ -18,14 +17,14 @@
 Clone the repository with submodules
 
 ```
-git clone --recursive https://github.com/LuisMayo/ace-attorney-twitter-bot
+git clone --recursive https://github.com/matrix07012/ace-attorney-mastodon-bot.git
 ```
 Install dependencies of this repo and the child repo
 ``` bash
 python -m pip install -r requirements.txt
 python -m pip install -r objection_engine/requirements.txt
 ```
-Copy keys-dummy.json into keys.json and fill the required settings with the access keys you should've obtained from Twitter's Developer portal
+Set INSTANCE_URL, LOGIN and PASSWORD in settings.py
 
 Start the project
 `python main.py`
