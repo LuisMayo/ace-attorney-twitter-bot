@@ -89,13 +89,13 @@ def process_tweets():
                     files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
 
                     try:
-                        # media = mastodon.media_post(output_filename)
-                        # mastodon.status_reply(status, "Here's the court session", media_ids=media)
-                        for file_name in files:
+                        media = mastodon.media_post(output_filename)
+                        mastodon.status_reply(status, "Here's the court session", media_ids=media)
+                        #for file_name in files:
                             #    print("trying media")
-                            media = mastodon.media_post(file_name)
+                            #media = mastodon.media_post(file_name)
                             #    print("trying status")
-                            mastodon.status_reply(status, "Here's the court session", media_ids=media)
+                            #mastodon.status_reply(status, "Here's the court session", media_ids=media)
                         #    mastodon.status_post("Here's the court session", in_reply_to_id=status["id"], media_ids=media)
                         #    print("tried status")
                     except Exception as e:
