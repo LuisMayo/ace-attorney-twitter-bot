@@ -81,7 +81,7 @@ def process_tweets():
             else:
                 for post in thread_dicts:
                     current_status = post
-                    print("adding status "+current_status["id"]+" to thread")
+                    print("adding status "+str(current_status["id"])+" to thread")
                     thread.insert(0, Comment(current_status).to_message())
 
                 if len(thread) >= 1:
