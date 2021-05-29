@@ -81,12 +81,15 @@ def process_tweets():
             else:
                 for post in thread_dicts:
                     current_status = post
+                    print("adding status "+current_status["id"]+" to thread")
                     thread.insert(0, Comment(current_status).to_message())
 
                 if len(thread) >= 1:
                     output_filename = str(status["id"]) + '.mp4'
+                    print("trying to render")
                     render_comment_list(thread, music_code=music_stat, output_filename=output_filename)
-                    files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
+                    #files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
+                    files = []
 
                     try:
                         media = mastodon.media_post(output_filename)

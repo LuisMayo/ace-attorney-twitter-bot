@@ -14,9 +14,6 @@ class Comment:
         self.body = soup.get_text().strip()
         extr_text = self.body
 
-        if len(self.body) == 0:
-            self.body = " "
-
         # remove mentions from the start and end
         try:
             if extr_text[0] == '@':
@@ -36,6 +33,9 @@ class Comment:
             self.body = extr_text
         except Exception as e:
             print(e)
+
+        if len(self.body) == 0:
+            self.body = " "
 
         # get first attached picture
         if len(stat["media_attachments"]) > 0:
