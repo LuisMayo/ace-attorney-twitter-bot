@@ -155,9 +155,11 @@ if __name__ == "__main__":
     # Load done IDs
     try:
         with open('done_ids.txt', 'r') as idFile:
-            done_ids = set(idFile.readlines())
+            lines = idFile.readlines()
+
+            done_ids = set([int(i) for i in lines])
     except FileNotFoundError:
-        done_ids = None
+        done_ids = ()
 
     # Init
 
