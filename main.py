@@ -19,27 +19,30 @@ delete_queue = Queue('delete')
 
 
 def update_id(id):
-    with open('done_ids.txt', 'a') as idFile:
-        idFile.write(str(id)+"\n")
+    with open('id.txt', 'w') as idFile:
+        idFile.write(id)
 
 
 def check_mentions():
-    global done_ids
+    global lastId
     global mention_queue
     while True:
         try:
-            mentions = mastodon.notifications(limit=30, mentions_only=True)
+            if lastId is None:
+                mentions = mastodon.notifications(mentions_only=True)[::-1]
+            else:
+                mentions = mastodon.notifications(since_id=lastId, mentions_only=True)[::-1]
             if len(mentions) > 0:
                 for mention in mentions:
-                    last_id = mention["id"]
+                    lastId = mention["id"]
                     status_id = mention["status"]["id"]
                     status_dict = mastodon.status(status_id)
-                    if 'render' in status_dict["content"] and last_id not in done_ids:
+                    if 'render' in status_dict["content"]:
                         mention_queue.put(status_dict)
                         print(mention_queue.qsize())
                     # if 'delete' in tweet.full_text:
                     #    delete_queue.put(tweet)
-                update_id(last_id)
+                update_id(str(lastId))
         except Exception as e:
             print(e)
         time.sleep(20)
@@ -152,12 +155,12 @@ if __name__ == "__main__":
             api_base_url=settings.INSTANCE_URL
         )
 
-    # Load done IDs
+    # Load last ID
     try:
-        with open('done_ids.txt', 'r') as idFile:
-            done_ids = set(idFile.readlines())
+        with open('id.txt', 'r') as idFile:
+            lastId = idFile.read()
     except FileNotFoundError:
-        done_ids = None
+        lastId = None
 
     # Init
 
