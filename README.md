@@ -8,7 +8,7 @@
 ### Prerequisites
 
  - Python 3
- - Mastodon or Pleroma account.
+ - Mastodon account (Pleroma should work, but it's not tested)
  - Ace Attorney data. Download it [here](https://drive.google.com/drive/folders/1jNpnB3pjHFvOyrfZ-WxlOXNaZ-XH4INx?usp=sharing) and put them in `./assets/`
  
  
@@ -24,7 +24,7 @@ Install dependencies of this repo and the child repo
 python -m pip install -r requirements.txt
 python -m pip install -r objection_engine/requirements.txt
 ```
-Set INSTANCE_URL, LOGIN and PASSWORD in settings.py
+Copy settings-dummy.py as settings.py and set INSTANCE_URL, LOGIN and PASSWORD in it
 
 Start the project
 `python main.py`

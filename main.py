@@ -37,7 +37,6 @@ def check_mentions():
                     lastId = mention["id"]
                     status_id = mention["status"]["id"]
                     status_dict = mastodon.status(status_id)
-                    # print("Id: " + str(status_id) + " content: " + status_dict["content"])
                     if 'render' in status_dict["content"]:
                         mention_queue.put(status_dict)
                         print(mention_queue.qsize())
