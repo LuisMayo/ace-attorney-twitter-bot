@@ -35,7 +35,7 @@ class Comment:
             print(e)
 
         if len(self.body) == 0:
-            self.body = " "
+            self.body = "Presenting evidence"
 
         # get first attached picture
         if len(stat["media_attachments"]) > 0:
