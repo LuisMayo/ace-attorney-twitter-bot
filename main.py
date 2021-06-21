@@ -75,6 +75,7 @@ def process_deletions():
 def process_tweets():
     global mention_queue
     global update_queue_params
+    global me
     while True:
         try:
             tweet = mention_queue.get()
@@ -104,6 +105,10 @@ def process_tweets():
                 while (current_tweet is not None) and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
                     try:
                         current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
+                        # Refusing to render zone
+                        if 'render' in current_tweet.full_text and any(user['id_str'] == me for user in current_tweet.entities['user_mentions']):
+                            api.update_status('@' + tweet.author.screen_name + ' I\'m sorry. Calling the bot several times in the same thread is not allowed', in_reply_to_status_id=tweet.id_str)
+                            break
                         if sanitize_tweet(current_tweet):
                             hate_detections += 1
                         if hate_detections >= 2:
@@ -111,6 +116,7 @@ def process_tweets():
                             clean(thread, None, [])
                             thread = []
                             break
+                    # End of refusing to render zone
                         thread.insert(0, Comment(current_tweet).to_message())
                         i += 1
                         if (current_tweet is not None and i >= settings.MAX_TWEETS_PER_THREAD):
@@ -193,6 +199,7 @@ except FileNotFoundError:
 auth = tweepy.OAuthHandler(keys['consumerApiKey'], keys['consumerApiSecret'])
 auth.set_access_token(keys['accessToken'], keys['accessTokenSecret'])
 api = tweepy.API(auth)
+me = api.me().id_str
 producer = threading.Thread(target=check_mentions)
 consumer = threading.Thread(target=process_tweets)
 threading.Thread(target=process_tweets).start()
