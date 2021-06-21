@@ -1,5 +1,7 @@
+from datetime import datetime, timezone
 import sys
 import json
+from update_queue_lenght import update_queue_length
 sys.path.append('./objection_engine')
 sys.path.append('./video-splitter')
 from collections import Counter 
@@ -72,9 +74,11 @@ def process_deletions():
 
 def process_tweets():
     global mention_queue
+    global update_queue_params
     while True:
         try:
             tweet = mention_queue.get()
+            update_queue_params['last_time'] = tweet.created_at
             thread = []
             current_tweet = tweet
             songs = ['PWR', 'JFA', 'TAT', 'rnd']
@@ -192,5 +196,11 @@ api = tweepy.API(auth)
 producer = threading.Thread(target=check_mentions)
 consumer = threading.Thread(target=process_tweets)
 threading.Thread(target=process_tweets).start()
+update_queue_params = {
+    'queue': mention_queue,
+    'last_time': None,
+    'api': api
+}
+threading.Thread(target=update_queue_length, args=[update_queue_params]).start()
 producer.start()
 consumer.start()
