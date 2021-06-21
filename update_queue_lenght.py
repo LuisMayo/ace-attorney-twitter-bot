@@ -12,4 +12,4 @@ def update_queue_length(params):
             # We only need hour and minutes
             time_difference_formatted = time_difference[:time_difference.index(':', 3)]
             params['api'].update_profile(location=f'queue time: {time_difference_formatted}. length: {size}')
-        sleep(10)
+        sleep(60)
