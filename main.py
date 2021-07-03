@@ -52,13 +52,14 @@ def postVideoTweet(reply_id, filename):
 def check_mentions():
     global lastId
     global mention_queue
+    global render_regex
     while True:
         try:
             mentions = api.mentions_timeline(count='200', tweet_mode="extended") if lastId == None else api.mentions_timeline(since_id=lastId, count='200', tweet_mode="extended")
             if len(mentions) > 0:
                 lastId = mentions[0].id_str
                 for tweet in mentions[::-1]:
-                    if 'render' in tweet.full_text:
+                    if re.search(render_regex, tweet.full_text) is not None:
                         mention_queue.put(tweet)
                         print(mention_queue.qsize())
                     if 'delete' in tweet.full_text:
@@ -106,7 +107,7 @@ def process_tweets():
                     try:
                         current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
                         # Refusing to render zone
-                        if 'render' in current_tweet.full_text and any(user['id_str'] == me for user in current_tweet.entities['user_mentions']):
+                        if re.search(render_regex, current_tweet.full_text) is not None and any(user['id_str'] == me for user in current_tweet.entities['user_mentions']):
                             api.update_status('@' + tweet.author.screen_name + ' I\'m sorry. Calling the bot several times in the same thread is not allowed', in_reply_to_status_id=tweet.id_str)
                             break
                         if sanitize_tweet(current_tweet):
@@ -199,7 +200,9 @@ except FileNotFoundError:
 auth = tweepy.OAuthHandler(keys['consumerApiKey'], keys['consumerApiSecret'])
 auth.set_access_token(keys['accessToken'], keys['accessTokenSecret'])
 api = tweepy.API(auth)
-me = api.me().id_str
+me_response = api.me()
+render_regex = f'^@{me_response.screen_name} render ?$'
+me = me_response.id_str
 producer = threading.Thread(target=check_mentions)
 consumer = threading.Thread(target=process_tweets)
 threading.Thread(target=process_tweets).start()
