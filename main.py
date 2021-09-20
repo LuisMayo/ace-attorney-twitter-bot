@@ -95,7 +95,7 @@ def process_tweets():
             
             if music_tweet not in songs: # If the music is written badly in the mention tweet, the bot will remind how to write it properly
                 try:
-                    api.update_status('@' + tweet.author.screen_name + ' The music argument format is incorrect. The posibilities are: \nPWR: Phoenix Wright Ace Attorney \nJFA: Justice for All \nTAT: Trials and Tribulations \nrnd: Random', in_reply_to_status_id=tweet.id_str)
+                    api.update_status('The music argument format is incorrect. The posibilities are: \nPWR: Phoenix Wright Ace Attorney \nJFA: Justice for All \nTAT: Trials and Tribulations \nrnd: Random', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
                 except Exception as musicerror:
                     print(musicerror)
             else:
@@ -108,12 +108,12 @@ def process_tweets():
                         current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
                         # Refusing to render zone
                         if re.search(render_regex, current_tweet.full_text) is not None and any(user['id_str'] == me for user in current_tweet.entities['user_mentions']):
-                            api.update_status('@' + tweet.author.screen_name + ' I\'m sorry. Calling the bot several times in the same thread is not allowed', in_reply_to_status_id=tweet.id_str)
+                            api.update_status('I\'m sorry. Calling the bot several times in the same thread is not allowed', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
                             break
                         if sanitize_tweet(current_tweet):
                             hate_detections += 1
                         if hate_detections >= 2:
-                            api.update_status('@' + tweet.author.screen_name + ' I\'m sorry. The thread may contain unwanted topics and I refuse to render them.', in_reply_to_status_id=tweet.id_str)
+                            api.update_status('I\'m sorry. The thread may contain unwanted topics and I refuse to render them.', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
                             clean(thread, None, [])
                             thread = []
                             break
@@ -122,10 +122,10 @@ def process_tweets():
                         i += 1
                         if (current_tweet is not None and i >= settings.MAX_TWEETS_PER_THREAD):
                             current_tweet = None
-                            api.update_status('@' + tweet.author.screen_name + f' Sorry, the thread was too long, I\'ve only retrieved {i} tweets', in_reply_to_status_id=tweet.id_str)
+                            api.update_status(f'Sorry, the thread was too long, I\'ve only retrieved {i} tweets', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
                     except tweepy.error.TweepError as e:
                         try:
-                            api.update_status('@' + tweet.author.screen_name + ' I\'m sorry. I wasn\'t able to retrieve the full thread. Deleted tweets or private accounts may exist', in_reply_to_status_id=tweet.id_str)
+                            api.update_status('I\'m sorry. I wasn\'t able to retrieve the full thread. Deleted tweets or private accounts may exist', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
                         except Exception as second_error:
                             print (second_error)
                         current_tweet = None
@@ -150,7 +150,7 @@ def process_tweets():
                             print(parsexc)
                         try:
                             if not limit:
-                                api.update_status('@' + tweet.author.screen_name + ' ' + str(e), in_reply_to_status_id=tweet.id_str)
+                                api.update_status(str(e), in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
                         except Exception as second_error:
                             print(second_error)
                         print(e)
