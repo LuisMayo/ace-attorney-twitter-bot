@@ -201,7 +201,7 @@ auth = tweepy.OAuthHandler(keys['consumerApiKey'], keys['consumerApiSecret'])
 auth.set_access_token(keys['accessToken'], keys['accessTokenSecret'])
 api = tweepy.API(auth)
 me_response = api.me()
-render_regex = f'^@{me_response.screen_name} render ?$'
+render_regex = f'^ *@{me_response.screen_name} render'
 me = me_response.id_str
 producer = threading.Thread(target=check_mentions)
 consumer = threading.Thread(target=process_tweets)
