@@ -204,14 +204,14 @@ me_response = api.me()
 # render_regex = f'^ *@{me_response.screen_name} render'
 render_regex = 'render'
 me = me_response.id_str
-producer = threading.Thread(target=check_mentions)
-consumer = threading.Thread(target=process_tweets)
-threading.Thread(target=process_tweets).start()
 update_queue_params = {
     'queue': mention_queue,
     'last_time': None,
     'api': api
 }
+producer = threading.Thread(target=check_mentions)
+consumer = threading.Thread(target=process_tweets)
+threading.Thread(target=process_tweets).start()
 threading.Thread(target=update_queue_length, args=[update_queue_params]).start()
 producer.start()
 consumer.start()
