@@ -24,10 +24,16 @@ mention_queue = Queue('queue')
 delete_queue = Queue('delete')
 profanity.load_censor_words_from_file('banlist.txt')
 
-
+def filter_beginning_mentions(match):
+    mentions = match[0].strip().split(' ')
+    index = next((index for index,x in enumerate(mentions) if x in mentions), len(mentions))
+    message = ' '.join(mentions[index:])
+    return message + ' ' if len(message) > 0 else message
 
 def sanitize_tweet(tweet):
     tweet.full_text = re.sub(r'^(@\S+ )+', '', tweet.full_text)
+    # tweet.full_text = re.sub(r'^(@\S+ )+', filter_beginning_mentions, tweet.full_text)
+    
     tweet.full_text = re.sub(r'(https)\S*', '(link)', tweet.full_text)
     sonar_prediction = sonar.ping(tweet.full_text)
     hate_classification = next((x for x in sonar_prediction['classes']  if x['class_name'] == 'hate_speech'), None)
