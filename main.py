@@ -26,14 +26,17 @@ profanity.load_censor_words_from_file('banlist.txt')
 
 def filter_beginning_mentions(match):
     mentions = match[0].strip().split(' ')
-    index = next((index for index,x in enumerate(mentions) if x in mentions), len(mentions))
+    index = next((index for index,x in enumerate(mentions) if x in mentions[:index]), len(mentions))
     message = ' '.join(mentions[index:])
     return message + ' ' if len(message) > 0 else message
 
 def sanitize_tweet(tweet, previous_tweet):
+    user_mentions = set()
 
-    user_mentions = set(mention["screen_name"] for mention in previous_tweet.entities["user_mentions"])
-    user_mentions.add(previous_tweet.user["screen_name"])
+    if previous_tweet is not None:
+        user_mentions.update(mention["screen_name"] for mention in previous_tweet.entities["user_mentions"])
+        user_mentions.add(previous_tweet.user.screen_name)
+    
     mentions_pattern = "|".join(user_mentions)
 
     # tweet.full_text = re.sub(r'^(@\S+ )+', '', tweet.full_text)
