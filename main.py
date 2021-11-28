@@ -38,8 +38,6 @@ def sanitize_tweet(tweet, previous_tweet):
         user_mentions.add(previous_tweet.user.screen_name)
     
     mentions_pattern = "|".join(user_mentions)
-
-    # tweet.full_text = re.sub(r'^(@\S+ )+', '', tweet.full_text)
     tweet.full_text = re.sub(f'^(@({mentions_pattern}) )+', filter_beginning_mentions, tweet.full_text)
     
     tweet.full_text = re.sub(r'(https)\S*', '(link)', tweet.full_text)
