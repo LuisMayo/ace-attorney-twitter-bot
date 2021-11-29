@@ -24,10 +24,22 @@ mention_queue = Queue('queue')
 delete_queue = Queue('delete')
 profanity.load_censor_words_from_file('banlist.txt')
 
+def filter_beginning_mentions(match):
+    mentions = match[0].strip().split(' ')
+    index = next((index for index,x in enumerate(mentions) if x in mentions[:index]), len(mentions))
+    message = ' '.join(mentions[index:])
+    return message + ' ' if len(message) > 0 else message
 
+def sanitize_tweet(tweet, previous_tweet):
+    user_mentions = set()
 
-def sanitize_tweet(tweet):
-    tweet.full_text = re.sub(r'^(@\S+ )+', '', tweet.full_text)
+    if previous_tweet is not None:
+        user_mentions.update(mention["screen_name"] for mention in previous_tweet.entities["user_mentions"])
+        user_mentions.add(previous_tweet.user.screen_name)
+    
+    mentions_pattern = "|".join(user_mentions)
+    tweet.full_text = re.sub(f'^(@({mentions_pattern}) )+', filter_beginning_mentions, tweet.full_text)
+    
     tweet.full_text = re.sub(r'(https)\S*', '(link)', tweet.full_text)
     sonar_prediction = sonar.ping(tweet.full_text)
     hate_classification = next((x for x in sonar_prediction['classes']  if x['class_name'] == 'hate_speech'), None)
@@ -83,6 +95,7 @@ def process_tweets():
             update_queue_params['last_time'] = tweet.created_at
             thread = []
             current_tweet = tweet
+            previous_tweet = None
             songs = ['PWR', 'JFA', 'TAT', 'rnd']
             
             if 'music=' in tweet.full_text:
@@ -105,12 +118,18 @@ def process_tweets():
                 hate_detections = 0
                 while (current_tweet is not None) and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
                     try:
-                        current_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
+                        current_tweet = previous_tweet or api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
+                        
+                        if current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str'):
+                            previous_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
+                        else:
+                            previous_tweet = None
+
                         # Refusing to render zone
                         if re.search(render_regex, current_tweet.full_text) is not None and any(user['id_str'] == me for user in current_tweet.entities['user_mentions']):
                             api.update_status('I\'m sorry. Calling the bot several times in the same thread is not allowed', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
                             break
-                        if sanitize_tweet(current_tweet):
+                        if sanitize_tweet(current_tweet, previous_tweet):
                             hate_detections += 1
                         if hate_detections >= 2:
                             api.update_status('I\'m sorry. The thread may contain unwanted topics and I refuse to render them.', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
