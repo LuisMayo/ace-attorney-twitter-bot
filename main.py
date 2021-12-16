@@ -152,10 +152,13 @@ def process_tweets():
                     output_filename = tweet.id_str + '.mp4'
                     render_comment_list(thread, music_code= music_tweet, output_filename=output_filename)
                     files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
-                    reply_to_tweet = tweet
+                    if (tweet.user.id_str in allowedPublicList):
+                        reply_to_tweet = None
+                    else:
+                        reply_to_tweet = tweet
                     try:
                         for file_name in files:
-                            reply_to_tweet = postVideoTweet(reply_to_tweet.id_str, file_name)
+                            reply_to_tweet = postVideoTweet(None if reply_to_tweet is None else reply_to_tweet.id_str, file_name)
                     except tweepy.error.TweepError as e:
                         limit = False
                         try:
@@ -214,6 +217,14 @@ try:
         lastId = idFile.read()
 except FileNotFoundError:
     lastId = None
+
+
+# Load last ID
+try:
+    with open('allowedPublic.txt', 'r') as idFile:
+        allowedPublicList = idFile.read().split(',')
+except FileNotFoundError:
+    allowedPublicList = []
 
 # Init
 auth = tweepy.OAuthHandler(keys['consumerApiKey'], keys['consumerApiSecret'])

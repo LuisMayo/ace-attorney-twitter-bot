@@ -3,3 +3,4 @@ git+https://github.com/tweepy/tweepy.git@2e2ffd9d86be9e6f32d2bfa508c530d2be51651
 persist-queue
 better_profanity==0.6.1
 hatesonar
+scikit-learn==0.21.3
