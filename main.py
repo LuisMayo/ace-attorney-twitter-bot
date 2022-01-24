@@ -16,13 +16,14 @@ import settings
 from hatesonar import Sonar
 from better_profanity import profanity
 from comment_list_brige import Comment
-from objection_engine.renderer import render_comment_list
+from objection_engine import render_comment_list, is_music_available, get_all_music_available
 splitter = __import__("ffmpeg-split")
 
 sonar = Sonar()
 mention_queue = Queue('queue')
 delete_queue = Queue('delete')
 profanity.load_censor_words_from_file('banlist.txt')
+available_songs: list[str] = get_all_music_available()
 
 def filter_beginning_mentions(match):
     mentions = match[0].strip().split(' ')
@@ -102,13 +103,10 @@ def process_tweets():
                 music_tweet = tweet.full_text.split('music=', 1)[1][:3]
             else:
                 music_tweet = 'PWR'
-                
-            if music_tweet == 'rnd':
-                music_tweet = random.choices(songs, [1, 1, 1, 0], k=1)[0]
             
-            if music_tweet not in songs: # If the music is written badly in the mention tweet, the bot will remind how to write it properly
+            if not is_music_available(music_tweet): # If the music is written badly in the mention tweet, the bot will remind how to write it properly
                 try:
-                    api.update_status('The music argument format is incorrect. The posibilities are: \nPWR: Phoenix Wright Ace Attorney \nJFA: Justice for All \nTAT: Trials and Tribulations \nrnd: Random', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+                    api.update_status('The music argument format is incorrect. The posibilities are: \n' + '\n'.join(available_songs), in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
                 except Exception as musicerror:
                     print(musicerror)
             else:
