@@ -136,7 +136,6 @@ def process_tweets():
 
                         # Refusing to render zone
                         if re.search(render_regex, current_tweet.full_text) is not None and any(user['id_str'] == me for user in current_tweet.entities['user_mentions']):
-                            api.update_status('I\'m sorry. Calling the bot several times in the same thread is not allowed', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
                             break
                         if sanitize_tweet(current_tweet, previous_tweet):
                             hate_detections += 1
