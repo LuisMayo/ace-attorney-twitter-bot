@@ -3,11 +3,10 @@ from time import sleep
 
 def update_queue_length(params):
     while True:
-        if params['last_time'] is None:
+        if params['queue'].empty():
             params['api'].update_profile(location='queue: empty')
         else:
             time_difference = str(datetime.now(timezone.utc) - params['last_time'])
-            params['last_time'] = None
             size = params['queue'].qsize()
             # We only need hour and minutes
             time_difference_formatted = time_difference[:time_difference.index(':', 3)]
