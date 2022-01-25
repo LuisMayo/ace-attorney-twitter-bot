@@ -17,6 +17,7 @@ from hatesonar import Sonar
 from better_profanity import profanity
 from comment_list_brige import Comment
 from objection_engine import render_comment_list, is_music_available, get_all_music_available
+from cacheout import LFUCache
 splitter = __import__("ffmpeg-split")
 
 sonar = Sonar()
@@ -24,6 +25,7 @@ mention_queue = Queue('queue')
 delete_queue = Queue('delete')
 profanity.load_censor_words_from_file('banlist.txt')
 available_songs: list[str] = get_all_music_available()
+cache = LFUCache()
 
 def filter_beginning_mentions(match):
     mentions = match[0].strip().split(' ')
@@ -97,23 +99,32 @@ def process_tweets():
             thread = []
             current_tweet = tweet
             previous_tweet = None
-            songs = ['PWR', 'JFA', 'TAT', 'rnd']
+            # The cache key is the key for the cache, it consists on the tweet ID and the selected music
+            cache_key = None
+
             
             if 'music=' in tweet.full_text:
                 music_tweet = tweet.full_text.split('music=', 1)[1][:3]
             else:
                 music_tweet = 'PWR'
+
+            if current_tweet is not None and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
+                cache_key = (current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str) + '/' + music_tweet.lower()
+            
+            cached_value = cache.get(cache_key)
             
             if not is_music_available(music_tweet): # If the music is written badly in the mention tweet, the bot will remind how to write it properly
                 try:
                     api.update_status('The music argument format is incorrect. The posibilities are: \n' + '\n'.join(available_songs), in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
                 except Exception as musicerror:
                     print(musicerror)
+            elif cached_value is not None:
+                api.update_status('I\'ve already done that, here you have ' + cached_value, in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
             else:
-                # In the case of Quotes I have to check for its presence instead of whether its None because Twitter API designers felt creative that week
                 i = 0
                 # If we have 2 hate detections we stop rendering the video all together
                 hate_detections = 0
+                # In the case of Quotes I have to check for its presence instead of whether its None because Twitter API designers felt creative that week
                 while (current_tweet is not None) and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
                     try:
                         current_tweet = previous_tweet or api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
@@ -151,9 +162,14 @@ def process_tweets():
                     render_comment_list(thread, music_code= music_tweet, output_filename=output_filename)
                     files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
                     reply_to_tweet = tweet
+                    first_tweet = True
                     try:
                         for file_name in files:
                             reply_to_tweet = postVideoTweet(reply_to_tweet.id_str, file_name)
+                            if first_tweet:
+                                cached_value = f'https://twitter.com/{me_response.screen_name}/status/{reply_to_tweet.id_str}'
+                                cache.add(cache_key, cached_value)
+                                first_tweet = False
                     except tweepy.error.TweepError as e:
                         limit = False
                         try:
@@ -228,7 +244,7 @@ update_queue_params = {
 }
 producer = threading.Thread(target=check_mentions)
 consumer = threading.Thread(target=process_tweets)
-threading.Thread(target=process_tweets).start()
+# threading.Thread(target=process_tweets).start()
 threading.Thread(target=update_queue_length, args=[update_queue_params]).start()
 producer.start()
 consumer.start()
