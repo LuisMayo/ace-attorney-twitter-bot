@@ -17,7 +17,7 @@ from hatesonar import Sonar
 from better_profanity import profanity
 from comment_list_brige import Comment
 from objection_engine import render_comment_list, is_music_available, get_all_music_available
-from cacheout import LFUCache
+from cacheout import LRUCache
 splitter = __import__("ffmpeg-split")
 
 sonar = Sonar()
@@ -25,7 +25,7 @@ mention_queue = Queue('queue')
 delete_queue = Queue('delete')
 profanity.load_censor_words_from_file('banlist.txt')
 available_songs = get_all_music_available()
-cache = LFUCache()
+cache = LRUCache()
 
 def filter_beginning_mentions(match):
     mentions = match[0].strip().split(' ')
