@@ -24,7 +24,7 @@ sonar = Sonar()
 mention_queue = Queue('queue')
 delete_queue = Queue('delete')
 profanity.load_censor_words_from_file('banlist.txt')
-available_songs: list[str] = get_all_music_available()
+available_songs = get_all_music_available()
 cache = LFUCache()
 
 def filter_beginning_mentions(match):
