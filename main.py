@@ -18,6 +18,8 @@ from better_profanity import profanity
 from comment_list_brige import Comment
 from objection_engine import render_comment_list, is_music_available, get_all_music_available
 from cacheout import LRUCache
+from pymongo import MongoClient
+
 splitter = __import__("ffmpeg-split")
 
 sonar = Sonar()
@@ -26,6 +28,8 @@ delete_queue = Queue('delete')
 profanity.load_censor_words_from_file('banlist.txt')
 available_songs = get_all_music_available()
 cache = LRUCache()
+mongo_client = MongoClient('mongodb://localhost/')
+collection = mongo_client['aa_tw_bot']['sent_videos']
 
 def filter_beginning_mentions(match):
     mentions = match[0].strip().split(' ')
@@ -101,6 +105,9 @@ def process_tweets():
             previous_tweet = None
             # The cache key is the key for the cache, it consists on the tweet ID and the selected music
             cache_key = None
+            # These variables are stored in mongodb database
+            users_in_video = []
+            video_ids = []
 
             
             if 'music=' in tweet.full_text:
@@ -145,12 +152,15 @@ def process_tweets():
                             thread = []
                             break
                     # End of refusing to render zone
+                        # We need all featuring users to be on the array to populate the database
+                        if current_tweet.user.id_str not in users_in_video:
+                            users_in_video.append(current_tweet.user.id_str)
                         thread.insert(0, Comment(current_tweet).to_message())
                         i += 1
                         if (current_tweet is not None and i >= settings.MAX_TWEETS_PER_THREAD):
                             current_tweet = None
                             api.update_status(f'Sorry, the thread was too long, I\'ve only retrieved {i} tweets', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
-                    except tweepy.error.TweepError as e:
+                    except tweepy.TweepyException as e:
                         try:
                             api.update_status('I\'m sorry. I wasn\'t able to retrieve the full thread. Deleted tweets or private accounts may exist', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
                         except Exception as second_error:
@@ -165,6 +175,7 @@ def process_tweets():
                     try:
                         for file_name in files:
                             reply_to_tweet = postVideoTweet(reply_to_tweet.id_str, file_name)
+                            video_ids.append(reply_to_tweet.id_str)
                             if first_tweet:
                                 cached_value = f'https://twitter.com/{me_response.screen_name}/status/{reply_to_tweet.id_str}'
                                 cache.add(cache_key, cached_value)
@@ -186,6 +197,11 @@ def process_tweets():
                         except Exception as second_error:
                             print(second_error)
                         print(e)
+                    # We insert the object into the database
+                    collection.insert_one({
+                        'users': users_in_video,
+                        'tweets': video_ids
+                    })
                     clean(thread, output_filename, files)
             time.sleep(1)
         except Exception as e:
