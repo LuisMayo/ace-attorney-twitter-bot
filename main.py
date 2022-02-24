@@ -11,7 +11,7 @@ import time
 import os
 from persistqueue import Queue
 import threading
-import random
+import time
 import settings
 from hatesonar import Sonar
 from better_profanity import profanity
@@ -200,7 +200,8 @@ def process_tweets():
                     # We insert the object into the database
                     collection.insert_one({
                         'users': users_in_video,
-                        'tweets': video_ids
+                        'tweets': video_ids,
+                        'time': int(time.time())
                     })
                     clean(thread, output_filename, files)
             time.sleep(1)
