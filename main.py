@@ -65,7 +65,7 @@ def postVideoTweet(reply_id, filename):
         time.sleep(uploaded_media.processing_info['check_after_secs'])
         uploaded_media = api.get_media_upload_status(uploaded_media.media_id_string)
     time.sleep(10)
-    return api.update_status('Your video is ready. Do you want it removed? contact @/LuisMayoV', in_reply_to_status_id=reply_id, auto_populate_reply_metadata = True, media_ids=[uploaded_media.media_id_string])
+    return api.update_status('Your video is ready. Do you want it removed? Check here: https://apps.luismayo.com/aa-dashboard/', in_reply_to_status_id=reply_id, auto_populate_reply_metadata = True, media_ids=[uploaded_media.media_id_string])
 
 
 def check_mentions():
