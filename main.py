@@ -96,7 +96,7 @@ def process_deletions():
         doc = collection.find_one(filter)
         if doc is None:
             try:
-                api.update_status('I can\'t delete the video, contact @LuisMayoV', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+                api.update_status('I can\'t delete the video, contact @/LuisMayoV', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
             except:
                 pass
         elif tweet.user.id_str not in doc['users']:
