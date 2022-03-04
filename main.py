@@ -290,7 +290,7 @@ update_queue_params = {
 }
 producer = threading.Thread(target=check_mentions)
 consumer = threading.Thread(target=process_tweets)
-# threading.Thread(target=process_tweets).start()
+threading.Thread(target=process_tweets).start()
 threading.Thread(target=update_queue_length, args=[update_queue_params]).start()
 threading.Thread(target=process_deletions).start()
 producer.start()
