@@ -81,7 +81,7 @@ def check_mentions():
                     if re.search(render_regex, tweet.full_text) is not None:
                         mention_queue.put(tweet)
                         print(mention_queue.qsize())
-                    if ('delete' in tweet.full_text or 'remove' in tweet.full_text) and tweet.in_reply_to_user_id == me_response.id:
+                    if ('delete' in tweet.full_text.lower() or 'remove' in tweet.full_text.lower()) and tweet.in_reply_to_user_id == me_response.id:
                         delete_queue.put(tweet)
                 update_id(lastId)
         except Exception as e:
