@@ -108,12 +108,17 @@ def process_deletions():
             try:
                 for video in doc['tweets']:
                     api.destroy_status(video)
-                collection.delete_one({'_id' : doc['_id']})
-            except:
+            except Exception as e:
                 try:
+                    print('Error while removing')
+                    print(e)
                     api.update_status('I can\'t delete the video, contact @/LuisMayoV', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
                 except:
                     pass
+            try:
+                collection.delete_one({'_id' : doc['_id']})
+            except Exception as e:
+                print(e)
             try:
                 api.create_favorite(tweet.id_str)
             except:
