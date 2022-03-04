@@ -65,7 +65,7 @@ def postVideoTweet(reply_id, filename):
         time.sleep(uploaded_media.processing_info['check_after_secs'])
         uploaded_media = api.get_media_upload_status(uploaded_media.media_id_string)
     time.sleep(10)
-    return api.update_status('Your video is ready. Do you want it removed? Check here: https://apps.luismayo.com/aa-dashboard/', in_reply_to_status_id=reply_id, auto_populate_reply_metadata = True, media_ids=[uploaded_media.media_id_string])
+    return api.update_status('Your video is ready. Do you want it removed? Reply to me saying "remove" or "delete"', in_reply_to_status_id=reply_id, auto_populate_reply_metadata = True, media_ids=[uploaded_media.media_id_string])
 
 
 def check_mentions():
@@ -81,7 +81,7 @@ def check_mentions():
                     if re.search(render_regex, tweet.full_text) is not None:
                         mention_queue.put(tweet)
                         print(mention_queue.qsize())
-                    if 'delete' in tweet.full_text:
+                    if ('delete' in tweet.full_text or 'remove' in tweet.full_text) and tweet.in_reply_to_user_id == me_response.id:
                         delete_queue.put(tweet)
                 update_id(lastId)
         except Exception as e:
@@ -90,6 +90,36 @@ def check_mentions():
 
 def process_deletions():
     global delete_queue
+    while True:
+        tweet = delete_queue.get()
+        filter = {"tweets": tweet.in_reply_to_status_id_str} 
+        doc = collection.find_one(filter)
+        if doc is None:
+            try:
+                api.update_status('I can\'t delete the video, contact @LuisMayoV', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+            except:
+                pass
+        elif tweet.user.id_str not in doc['users']:
+            try:
+                api.update_status('You are not authorized to remove this video', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+            except:
+                pass
+        else:
+            try:
+                for video in doc['tweets']:
+                    api.destroy_status(video)
+                collection.delete_one({'_id' : doc['_id']})
+            except:
+                try:
+                    api.update_status('I can\'t delete the video, contact @/LuisMayoV', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+                except:
+                    pass
+            try:
+                api.create_favorite(tweet.id_str)
+            except:
+                pass
+        time.sleep(1)
+        
 
 
 def process_tweets():
@@ -262,5 +292,6 @@ producer = threading.Thread(target=check_mentions)
 consumer = threading.Thread(target=process_tweets)
 # threading.Thread(target=process_tweets).start()
 threading.Thread(target=update_queue_length, args=[update_queue_params]).start()
+threading.Thread(target=process_deletions).start()
 producer.start()
 consumer.start()
