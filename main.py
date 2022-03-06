@@ -141,7 +141,7 @@ def process_tweets():
             # The cache key is the key for the cache, it consists on the tweet ID and the selected music
             cache_key = None
             # These variables are stored in mongodb database
-            users_in_video = []
+            users_in_video = [tweet.user.id_str]
             video_ids = []
 
             
