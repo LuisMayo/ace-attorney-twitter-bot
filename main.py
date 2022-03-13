@@ -91,9 +91,13 @@ def check_mentions():
 def process_deletions():
     global delete_queue
     while True:
-        tweet = delete_queue.get()
-        filter = {"tweets": tweet.in_reply_to_status_id_str} 
-        doc = collection.find_one(filter)
+        try:
+            tweet = delete_queue.get()
+            filter = {"tweets": tweet.in_reply_to_status_id_str} 
+            doc = collection.find_one(filter)
+        except Exception as e:
+            print(e)
+            continue
         if doc is None:
             try:
                 api.update_status('I can\'t delete the video, contact @/LuisMayoV', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
