@@ -93,6 +93,10 @@ def process_deletions():
     while True:
         try:
             tweet = delete_queue.get()
+            tweet_to_remove = api.get_status(tweet.in_reply_to_status_id_str, tweet_mode="extended")
+            if tweet_to_remove.user.id_str != me or not hasattr(tweet_to_remove, 'extended_entities') or 'media' not in tweet_to_remove.extended_entities or len(tweet_to_remove.extended_entities['media']) == 0:
+                # If they don't ask us to remove a video just ignore them
+                continue
             filter = {"tweets": tweet.in_reply_to_status_id_str} 
             doc = collection.find_one(filter)
         except Exception as e:
