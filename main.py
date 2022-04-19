@@ -211,7 +211,7 @@ def process_tweets():
                         current_tweet = None
                 if (len(thread) >= 1):
                     output_filename = tweet.id_str + '.mp4'
-                    render_comment_list(thread, music_code= music_tweet, output_filename=output_filename)
+                    render_comment_list(thread, music_code= music_tweet, output_filename=output_filename, resolution_scale=2)
                     files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
                     reply_to_tweet = tweet
                     first_tweet = True
