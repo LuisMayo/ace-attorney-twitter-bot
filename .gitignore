@@ -4,3 +4,8 @@ __pycache__/
 assets/
 queue/
 delete/
+
+venv/*
+*.mp4
+*.jpg
+*.png
