@@ -1,12 +1,11 @@
 import requests
 from objection_engine.beans.comment import Comment as obj_comment
-from objection_engine.beans.text import AnimText
+from objection_engine.beans.text import is_renderable
 
 class Comment:
     def __init__(self, tweet):
         # check if username is renderable, if not, use their "screen_name"
-        self.username_text = AnimText(tweet.user.name)
-        if self.is_username_renderable():
+        if is_renderable(tweet.user.name):
             self.author_name = tweet.user.name
         else:
             self.author_name = f"@{tweet.user.screen_name}"
@@ -23,9 +22,3 @@ class Comment:
             self.evidence = name
     def to_message(self) -> obj_comment:
         return obj_comment(user_id=self.author_id, user_name = self.author_name, text_content=self.body, evidence_path=self.evidence)
-
-    def is_username_renderable(self):
-        score = 0
-        for font in self.username_text.font_array:
-            score = max(score, self.username_text._check_font(font))
-        return score >= len(self.username_text._internal_text)
