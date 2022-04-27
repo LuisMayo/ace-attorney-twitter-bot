@@ -1,0 +1,28 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+spaw = "*"
+matplotlib = "*"
+pydub = "*"
+moviepy = "*"
+ffmpeg-python = "*"
+spacy = "==2.3.5"
+textblob = "*"
+praw = "*"
+tinydb = "*"
+xx-ent-wiki-sm = {file = "https://github.com/explosion/spacy-models/releases/download/xx_ent_wiki_sm-2.3.0/xx_ent_wiki_sm-2.3.0.tar.gz"}
+google-cloud-translate = "==2.0.1"
+Cython = "*"
+Pillow = "*"
+persist-queue = "*"
+beautifulsoup4 = "*"
+requests = "*"
+"Mastodon.py" = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"
