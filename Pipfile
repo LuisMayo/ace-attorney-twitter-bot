@@ -21,6 +21,8 @@ persist-queue = "*"
 beautifulsoup4 = "*"
 requests = "*"
 "Mastodon.py" = "*"
+opencv-python = "*"
+fonttools = "*"
 
 [dev-packages]
 
