@@ -1,31 +1,51 @@
+from datetime import datetime, timezone
 import sys
-
+from update_queue_lenght import update_queue_length
 sys.path.append('./objection_engine')
 sys.path.append('./video-splitter')
+import re
 import time
 import os
 from persistqueue import Queue
 import threading
-import random
+import time
 import settings
 from comment_list_brige import Comment
-from objection_engine.renderer import render_comment_list
-from mastodon import Mastodon
+from objection_engine import render_comment_list, is_music_available, get_all_music_available
+# TODO: cache and database
+# from cacheout import LRUCache
+# from pymongo import MongoClient
+from mastodon import Mastodon, MastodonError, MastodonRatelimitError
 
 splitter = __import__("ffmpeg-split")
 
 mention_queue = Queue('queue')
 delete_queue = Queue('delete')
+available_songs = get_all_music_available()
+# TODO: cache and database
+# cache = LRUCache()
+# mongo_client = MongoClient('mongodb://localhost/')
+# collection = mongo_client['aa_tw_bot']['sent_videos']
 
+def filter_beginning_mentions(match):
+    mentions = match[0].strip().split(' ')
+    index = next((index for index,x in enumerate(mentions) if x in mentions[:index]), len(mentions))
+    message = ' '.join(mentions[index:])
+    return message + ' ' if len(message) > 0 else message
 
 def update_id(id):
     with open('id.txt', 'w') as idFile:
         idFile.write(id)
 
+def postVideoTweet(status, filename):
+    media = mastodon.media_post(filename)
+    time.sleep(10)
+    mastodon.status_reply(status, 'Your video is ready. Do you want it removed? Reply to me saying "remove" or "delete"', media_ids=media)
 
 def check_mentions():
     global lastId
     global mention_queue
+    global render_regex
     while True:
         try:
             if lastId is None:
@@ -35,13 +55,13 @@ def check_mentions():
             if len(mentions) > 0:
                 for mention in mentions:
                     lastId = mention["id"]
-                    status_id = mention["status"]["id"]
-                    status_dict = mastodon.status(status_id)
-                    if 'render' in status_dict["content"]:
+                    status_dict = mention["status"]
+                    if re.search(render_regex, status_dict["content"]) is not None:
                         mention_queue.put(status_dict)
                         print(mention_queue.qsize())
-                    # if 'delete' in tweet.full_text:
-                    #    delete_queue.put(tweet)
+                    # TODO: Implement deletion for Mastodon
+                    # if ('delete' in tweet.full_text.lower() or 'remove' in tweet.full_text.lower()) and tweet.in_reply_to_user_id == me_response.id:
+                    #     delete_queue.put(tweet)
                 update_id(str(lastId))
         except Exception as e:
             print(e)
@@ -50,34 +70,91 @@ def check_mentions():
 
 def process_deletions():
     global delete_queue
+    # TODO: Implement deletion for Mastodon
+    # while True:
+    #     try:
+    #         tweet = delete_queue.get()
+    #         tweet_to_remove = api.get_status(tweet.in_reply_to_status_id_str, tweet_mode="extended")
+    #         if tweet_to_remove.user.id_str != me or not hasattr(tweet_to_remove, 'extended_entities') or 'media' not in tweet_to_remove.extended_entities or len(tweet_to_remove.extended_entities['media']) == 0:
+    #             # If they don't ask us to remove a video just ignore them
+    #             continue
+    #         filter = {"tweets": tweet.in_reply_to_status_id_str}
+    #         doc = collection.find_one(filter)
+    #     except Exception as e:
+    #         print(e)
+    #         continue
+    #     if doc is None:
+    #         try:
+    #             api.update_status('I can\'t delete the video, contact @/LuisMayoV', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+    #         except:
+    #             pass
+    #     elif tweet.user.id_str not in doc['users']:
+    #         try:
+    #             api.update_status('You are not authorized to remove this video', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+    #         except:
+    #             pass
+    #     else:
+    #         try:
+    #             for video in doc['tweets']:
+    #                 api.destroy_status(video)
+    #         except Exception as e:
+    #             try:
+    #                 print('Error while removing')
+    #                 print(e)
+    #                 api.update_status('I can\'t delete the video, contact @/LuisMayoV', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+    #             except:
+    #                 pass
+    #         try:
+    #             collection.delete_one({'_id' : doc['_id']})
+    #         except Exception as e:
+    #             print(e)
+    #         try:
+    #             api.create_favorite(tweet.id_str)
+    #         except:
+    #             pass
+    #     time.sleep(1)
+
 
 
 def process_tweets():
     global mention_queue
+    global update_queue_params
+    global me
     while True:
         thread = []
         try:
             status = mention_queue.get()
-            # print(mastodon.status_context(status["id"])["ancestors"])
+            update_queue_params['last_time'] = status["created_at"]
+            # TODO: activate cache thing
+            # current_tweet = tweet
+            # previous_tweet = None
+            # # The cache key is the key for the cache, it consists on the tweet ID and the selected music
+            # cache_key = None
             thread_dicts = mastodon.status_context(status["id"])["ancestors"][::-1]
-            songs = ['PWR', 'JFA', 'TAT', 'rnd']
+            # TODO: enable database logging
+            # # These variables are stored in mongodb database
+            # users_in_video = [tweet.user.id_str]
+            # video_ids = []
 
             if 'music=' in status["content"]:
                 music_stat = status["content"].split('music=', 1)[1][:3]
             else:
                 music_stat = 'PWR'
 
-            if music_stat == 'rnd':
-                music_stat = random.choices(songs, [1, 1, 1, 0], k=1)[0]
+            # TODO: activate cache thing
+            # if current_tweet is not None and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
+            #     cache_key = (current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str) + '/' + music_tweet.lower()
 
-            if music_stat not in songs:  # If the music is written badly in the mention tweet, the bot will remind how to write it properly
+            # cached_value = cache.get(cache_key)
+
+            if not is_music_available(music_stat):  # If the music is written badly in the mention tweet, the bot will remind how to write it properly
                 try:
-                    mastodon.status_reply(status, 'BROKEN. Dont select music! The music argument format is incorrect. The possibilities '
-                                                  'are: \nPWR: Phoenix Wright Ace Attorney \nJFA: '
-                                                  'Justice for '
-                                                  'All \nTAT: Trials and Tribulations \nrnd: Random')
+                    mastodon.status_reply(status, 'The music argument format is incorrect. The posibilities are: \n' + '\n'.join(available_songs))
                 except Exception as musicerror:
                     print(musicerror)
+            # TODO: activate cache thing
+            # elif cached_value is not None:
+            #     api.update_status('I\'ve already done that, here you have ' + cached_value, in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
             else:
                 for post in thread_dicts:
                     current_status = post
@@ -87,25 +164,29 @@ def process_tweets():
                 if len(thread) >= 1:
                     output_filename = str(status["id"]) + '.mp4'
                     print("trying to render")
-                    render_comment_list(thread, music_code=music_stat, output_filename=output_filename)
-                    #files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
+                    render_comment_list(thread, music_code=music_stat, output_filename=output_filename, resolution_scale=2)
                     files = []
 
                     try:
-                        media = mastodon.media_post(output_filename)
-                        mastodon.status_reply(status, "Here's the court session", media_ids=media)
-                        #for file_name in files:
-                            #    print("trying media")
-                            #media = mastodon.media_post(file_name)
-                            #    print("trying status")
-                            #mastodon.status_reply(status, "Here's the court session", media_ids=media)
-                        #    mastodon.status_post("Here's the court session", in_reply_to_id=status["id"], media_ids=media)
-                        #    print("tried status")
-                    except Exception as e:
-                        print(e)
-                        print("Can't post")
+                        postVideoTweet(status, output_filename)
+                    except MastodonRatelimitError as e:
+                        print("I'm Rated-limited :(")
                         mention_queue.put(status)
-                        time.sleep(600)
+                        time.sleep(900)
+                        print(e)
+                    except MastodonError as e:
+                        try:
+                            mastodon.status_reply(status, str(e))
+                        except Exception as second_error:
+                            print(second_error)
+                        print(e)
+                    # TODO: enable database logging
+                    # # We insert the object into the database
+                    # collection.insert_one({
+                    #     'users': users_in_video,
+                    #     'tweets': video_ids,
+                    #     'time': int(time.time())
+                    # })
                     clean(thread, output_filename, files)
             time.sleep(1)
         except Exception as e:
@@ -166,9 +247,20 @@ if __name__ == "__main__":
         lastId = None
 
     # Init
-
+    # TODO: Mastodon API
+    # me_response = api.me()
+    # # render_regex = f'^ *@{me_response.screen_name} render'
+    render_regex = 'render'
+    # me = me_response.id_str
+    update_queue_params = {
+        'queue': mention_queue,
+        'last_time': None,
+        'mastodon': mastodon
+    }
     producer = threading.Thread(target=check_mentions)
     consumer = threading.Thread(target=process_tweets)
     threading.Thread(target=process_tweets).start()
+    # threading.Thread(target=update_queue_length, args=[update_queue_params]).start()
+    threading.Thread(target=process_deletions).start()
     producer.start()
     consumer.start()

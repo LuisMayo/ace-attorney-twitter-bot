@@ -1,4 +1,6 @@
 Mastodon.py
 persist-queue
+cacheout==0.13.1
+pymongo
 beautifulsoup4
 requests

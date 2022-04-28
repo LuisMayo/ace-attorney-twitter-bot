@@ -6,5 +6,8 @@ __pycache__/
 assets/
 queue/
 delete/
-venv/
-.idea/
+
+venv/*
+*.mp4
+*.jpg
+*.png

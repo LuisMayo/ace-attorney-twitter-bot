@@ -2,16 +2,15 @@
  Fork of [Ace Attorney Twitter bot](https://github.com/LuisMayo/ace-attorney-twitter-bot) that turns threads into Ace Attorney scenes, adapted for Mastodon and with "hate" detection removed
 
 
- 
+
 ## Getting Started
 
 ### Prerequisites
 
- - Python 3
+ - Everything included in [/objection_engine/Readme.md](https://github.com/LuisMayo/objection_engine/blob/main/README.md#prerequisites).
  - Mastodon account (Pleroma should work, but it's not tested)
- - Ace Attorney data. Download it [here](https://drive.google.com/drive/folders/1jNpnB3pjHFvOyrfZ-WxlOXNaZ-XH4INx?usp=sharing) and put them in `./assets/`
- 
- 
+
+
 ### Installing
 
 Clone the repository with submodules
@@ -19,7 +18,7 @@ Clone the repository with submodules
 ```
 git clone --recursive https://github.com/matrix07012/ace-attorney-mastodon-bot.git
 ```
-Install dependencies of this repo and the child repo
+Install dependencies of this repo and the child repo. Refer to [objection engine's install instructions](https://github.com/LuisMayo/objection_engine/blob/main/README.md#installing) for any problems you may encounter
 ``` bash
 python -m pip install -r requirements.txt
 python -m pip install -r objection_engine/requirements.txt

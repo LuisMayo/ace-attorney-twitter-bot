@@ -1,11 +1,16 @@
 import requests
 from bs4 import BeautifulSoup
 from objection_engine.beans.comment import Comment as obj_comment
+from objection_engine.beans.text import is_renderable
 
 
 class Comment:
     def __init__(self, stat):
-        self.author_name = stat["account"]["username"]
+        # check if username is renderable, if not, use their "screen_name"
+        if is_renderable(stat["account"]["display_name"]):
+            self.author_name = stat["account"]["display_name"]
+        else:
+            self.author_name = stat["account"]["acct"]
         self.author_id = stat["account"]["id"]
         self.body = stat["content"]
         self.evidence = None
