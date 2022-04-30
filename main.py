@@ -12,8 +12,8 @@ import time
 import settings
 from comment_list_brige import Comment
 from objection_engine import render_comment_list, is_music_available, get_all_music_available
-# TODO: cache and database
-# from cacheout import LRUCache
+from cacheout import LRUCache
+# TODO: database
 # from pymongo import MongoClient
 from mastodon import Mastodon, MastodonError, MastodonRatelimitError, CallbackStreamListener
 
@@ -22,8 +22,8 @@ splitter = __import__("ffmpeg-split")
 mention_queue = Queue('queue')
 delete_queue = Queue('delete')
 available_songs = get_all_music_available()
-# TODO: cache and database
-# cache = LRUCache()
+cache = LRUCache()
+# TODO: database
 # mongo_client = MongoClient('mongodb://localhost/')
 # collection = mongo_client['aa_tw_bot']['sent_videos']
 
@@ -40,7 +40,7 @@ def update_id(id):
 def postVideoTweet(status, filename):
     media = mastodon.media_post(filename)
     time.sleep(10)
-    mastodon.status_reply(status, 'Your video is ready. Do you want it removed? Reply to me saying "remove" or "delete"', media_ids=media)
+    return mastodon.status_reply(status, 'Your video is ready. Do you want it removed? Reply to me saying "remove" or "delete"', media_ids=media)
 
 def check_mention(mention):
     global mention_queue
@@ -78,7 +78,6 @@ def check_mentions():
     def notification_handler(notification):
         nonlocal lastId
         if notification["type"] == "mention":
-            print("n")
             lastId = notification["id"]
             check_mention(notification)
             update_id(str(lastId))
@@ -149,11 +148,8 @@ def process_tweets():
         try:
             status = mention_queue.get()
             update_queue_params['last_time'] = status["created_at"]
-            # TODO: activate cache thing
-            # current_tweet = tweet
-            # previous_tweet = None
-            # # The cache key is the key for the cache, it consists on the tweet ID and the selected music
-            # cache_key = None
+            # The cache key is the key for the cache, it consists on the status ID and the selected music
+            cache_key = None
             thread_dicts = mastodon.status_context(status["id"])["ancestors"][::-1]
             # TODO: enable database logging
             # # These variables are stored in mongodb database
@@ -165,20 +161,18 @@ def process_tweets():
             else:
                 music_stat = 'PWR'
 
-            # TODO: activate cache thing
-            # if current_tweet is not None and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
-            #     cache_key = (current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str) + '/' + music_tweet.lower()
+            if status is not None and status["in_reply_to_id"]:
+                cache_key = f"{status['in_reply_to_id']}/{music_stat.lower()}"
 
-            # cached_value = cache.get(cache_key)
+            cached_value = cache.get(cache_key)
 
             if not is_music_available(music_stat):  # If the music is written badly in the mention tweet, the bot will remind how to write it properly
                 try:
                     mastodon.status_reply(status, 'The music argument format is incorrect. The posibilities are: \n' + '\n'.join(available_songs))
                 except Exception as musicerror:
                     print(musicerror)
-            # TODO: activate cache thing
-            # elif cached_value is not None:
-            #     api.update_status('I\'ve already done that, here you have ' + cached_value, in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+            elif cached_value is not None:
+                mastodon.status_reply(status, 'I\'ve already done that, here you have ' + cached_value)
             else:
                 for post in thread_dicts:
                     current_status = post
@@ -192,7 +186,9 @@ def process_tweets():
                     files = []
 
                     try:
-                        postVideoTweet(status, output_filename)
+                        reply_to_tweet = postVideoTweet(status, output_filename)
+                        cached_value = f'{settings.INSTANCE_URL}/@{me_response["username"]}/{reply_to_tweet["id"]}'
+                        cache.add(cache_key, cached_value)
                     except MastodonRatelimitError as e:
                         print("I'm Rated-limited :(")
                         mention_queue.put(status)
@@ -264,8 +260,7 @@ if __name__ == "__main__":
         )
 
     # Init
-    # TODO: Mastodon API
-    # me_response = api.me()
+    me_response = mastodon.account_verify_credentials()
     # # render_regex = f'^ *@{me_response.screen_name} render'
     render_regex = 'render'
     # me = me_response.id_str

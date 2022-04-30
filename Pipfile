@@ -23,6 +23,7 @@ requests = "*"
 "Mastodon.py" = "*"
 opencv-python = "*"
 fonttools = "*"
+cacheout = "==0.13.1"
 
 [dev-packages]
 
