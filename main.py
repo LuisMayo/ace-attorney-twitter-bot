@@ -93,7 +93,7 @@ def check_mentions():
         try:
             mastodon.stream_user(Listener())
         except MastodonError as e:
-            print(e)
+            print(f'Error from stream: {e}')
         time.sleep(20)
 
 
@@ -109,7 +109,7 @@ def process_deletions():
             filter = {"statuses": status["in_reply_to_id"]}
             doc = collection.find_one(filter)
         except Exception as e:
-            print(e)
+            print(f'Error when checking deletion: {e}')
             continue
         if doc is None:
             try:
@@ -174,7 +174,7 @@ def process_tweets():
                 try:
                     mastodon.status_reply(status, 'The music argument format is incorrect. The posibilities are: \n' + '\n'.join(available_songs))
                 except Exception as musicerror:
-                    print(musicerror)
+                    print(f'Error when replying music error: {musicerror}')
             elif cached_value is not None:
                 mastodon.status_reply(status, 'I\'ve already done that, here you have ' + cached_value)
                 clean(thread, None, [])
@@ -204,8 +204,8 @@ def process_tweets():
                         try:
                             mastodon.status_reply(status, str(e))
                         except Exception as second_error:
-                            print(second_error)
-                        print(e)
+                            print(f'Second error: {second_error}')
+                        print(f'Error while posting video: {e}')
                     # We insert the object into the database
                     collection.insert_one({
                         'users': users_in_video,
@@ -216,7 +216,7 @@ def process_tweets():
             time.sleep(1)
         except Exception as e:
             clean(thread, None, [])
-            print(e)
+            print(f'Error while processing thread: {e}')
 
 
 def clean(thread, output_filename, files):
@@ -228,17 +228,17 @@ def clean(thread, output_filename, files):
             if hasattr(comment, 'evidence') and comment.evidence is not None:
                 os.remove(comment.evidence)
     except Exception as second_e:
-        print(second_e)
+        print(f'Error while cleanup: {second_e}')
     try:
         for file_name in files:
             os.remove(file_name)
     except Exception as second_e:
-        print(second_e)
+        print(f'Error while cleanup: {second_e}')
     try:
         if output_filename is not None:
             os.remove(output_filename)
     except Exception as second_e:
-        print(second_e)
+        print(f'Error while cleanup: {second_e}')
 
 
 if __name__ == "__main__":
