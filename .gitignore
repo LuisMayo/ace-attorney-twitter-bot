@@ -2,6 +2,7 @@ id.txt
 settings.py
 clientcred.secret
 usercred.secret
+aa_mstdn_bot.db
 __pycache__/
 assets/
 queue/

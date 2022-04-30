@@ -24,6 +24,7 @@ requests = "*"
 opencv-python = "*"
 fonttools = "*"
 cacheout = "==0.13.1"
+mongita = "==1.1.1"
 
 [dev-packages]
 

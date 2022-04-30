@@ -13,8 +13,7 @@ import settings
 from comment_list_brige import Comment
 from objection_engine import render_comment_list, is_music_available, get_all_music_available
 from cacheout import LRUCache
-# TODO: database
-# from pymongo import MongoClient
+from mongita import MongitaClientDisk
 from mastodon import Mastodon, MastodonError, MastodonRatelimitError, StreamListener
 
 splitter = __import__("ffmpeg-split")
@@ -23,9 +22,8 @@ mention_queue = Queue('queue')
 delete_queue = Queue('delete')
 available_songs = get_all_music_available()
 cache = LRUCache()
-# TODO: database
-# mongo_client = MongoClient('mongodb://localhost/')
-# collection = mongo_client['aa_tw_bot']['sent_videos']
+mongo_client = MongitaClientDisk()
+collection = mongo_client['aa_tw_bot']['sent_videos']
 
 def filter_beginning_mentions(match):
     mentions = match[0].strip().split(' ')
@@ -50,9 +48,8 @@ def check_mention(mention):
     if re.search(render_regex, status_dict["content"]) is not None:
         mention_queue.put(status_dict)
         print(f"Queue size: {mention_queue.qsize()}")
-    # TODO: Implement deletion for Mastodon
-    # if ('delete' in status_dict["content"].lower() or 'remove' in status_dict["content"].lower()) and tweet.in_reply_to_user_id == me_response.id:
-    #     delete_queue.put(status_dict)
+    if ('delete' in status_dict["content"].lower() or 'remove' in status_dict["content"].lower()) and status_dict["in_reply_to_account_id"] == me_response["id"]:
+        delete_queue.put(status_dict)
 
 def check_mentions():
     def get_existing_mentions(lastId):
@@ -102,49 +99,48 @@ def check_mentions():
 
 def process_deletions():
     global delete_queue
-    # TODO: Implement deletion for Mastodon
-    # while True:
-    #     try:
-    #         tweet = delete_queue.get()
-    #         tweet_to_remove = api.get_status(tweet.in_reply_to_status_id_str, tweet_mode="extended")
-    #         if tweet_to_remove.user.id_str != me or not hasattr(tweet_to_remove, 'extended_entities') or 'media' not in tweet_to_remove.extended_entities or len(tweet_to_remove.extended_entities['media']) == 0:
-    #             # If they don't ask us to remove a video just ignore them
-    #             continue
-    #         filter = {"tweets": tweet.in_reply_to_status_id_str}
-    #         doc = collection.find_one(filter)
-    #     except Exception as e:
-    #         print(e)
-    #         continue
-    #     if doc is None:
-    #         try:
-    #             api.update_status('I can\'t delete the video, contact @/LuisMayoV', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
-    #         except:
-    #             pass
-    #     elif tweet.user.id_str not in doc['users']:
-    #         try:
-    #             api.update_status('You are not authorized to remove this video', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
-    #         except:
-    #             pass
-    #     else:
-    #         try:
-    #             for video in doc['tweets']:
-    #                 api.destroy_status(video)
-    #         except Exception as e:
-    #             try:
-    #                 print('Error while removing')
-    #                 print(e)
-    #                 api.update_status('I can\'t delete the video, contact @/LuisMayoV', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
-    #             except:
-    #                 pass
-    #         try:
-    #             collection.delete_one({'_id' : doc['_id']})
-    #         except Exception as e:
-    #             print(e)
-    #         try:
-    #             api.create_favorite(tweet.id_str)
-    #         except:
-    #             pass
-    #     time.sleep(1)
+    while True:
+        try:
+            status = delete_queue.get()
+            status_to_remove = mastodon.status(status["in_reply_to_id"])
+            if status_to_remove["account"]["id"] != me or len(status_to_remove.media_attachments) == 0:
+                # If they don't ask us to remove a video just ignore them
+                continue
+            filter = {"statuses": status["in_reply_to_id"]}
+            doc = collection.find_one(filter)
+        except Exception as e:
+            print(e)
+            continue
+        if doc is None:
+            try:
+                mastodon.status_reply(status, f'I can\'t delete the video, contact @/{settings.ADMIN}')
+            except:
+                pass
+        elif status["account"]["id"] not in doc['users']:
+            try:
+                mastodon.status_reply(status, 'You are not authorized to remove this video')
+            except:
+                pass
+        else:
+            try:
+                for video in doc['statuses']:
+                    mastodon.status_delete(video)
+            except Exception as e:
+                try:
+                    print('Error while removing')
+                    print(e)
+                    mastodon.status_reply(status, f'I can\'t delete the video, contact @/{settings.ADMIN}')
+                except:
+                    pass
+            try:
+                collection.delete_one({'_id' : doc['_id']})
+            except Exception as e:
+                print(e)
+            try:
+                mastodon.status_favourite(status)
+            except:
+                pass
+        time.sleep(1)
 
 
 
@@ -160,10 +156,9 @@ def process_tweets():
             # The cache key is the key for the cache, it consists on the status ID and the selected music
             cache_key = None
             thread_dicts = mastodon.status_context(status["id"])["ancestors"][::-1]
-            # TODO: enable database logging
-            # # These variables are stored in mongodb database
-            # users_in_video = [tweet.user.id_str]
-            # video_ids = []
+            # These variables are stored in mongodb database
+            users_in_video = [status["account"]["id"]]
+            video_ids = []
 
             if 'music=' in status["content"]:
                 music_stat = status["content"].split('music=', 1)[1][:3]
@@ -182,6 +177,7 @@ def process_tweets():
                     print(musicerror)
             elif cached_value is not None:
                 mastodon.status_reply(status, 'I\'ve already done that, here you have ' + cached_value)
+                clean(thread, None, [])
             else:
                 for post in thread_dicts:
                     current_status = post
@@ -196,6 +192,7 @@ def process_tweets():
 
                     try:
                         reply_to_tweet = postVideoTweet(status, output_filename)
+                        video_ids.append(reply_to_tweet["id"])
                         cached_value = f'{settings.INSTANCE_URL}/@{me_response["username"]}/{reply_to_tweet["id"]}'
                         cache.add(cache_key, cached_value)
                     except MastodonRatelimitError as e:
@@ -209,13 +206,12 @@ def process_tweets():
                         except Exception as second_error:
                             print(second_error)
                         print(e)
-                    # TODO: enable database logging
-                    # # We insert the object into the database
-                    # collection.insert_one({
-                    #     'users': users_in_video,
-                    #     'tweets': video_ids,
-                    #     'time': int(time.time())
-                    # })
+                    # We insert the object into the database
+                    collection.insert_one({
+                        'users': users_in_video,
+                        'statuses': video_ids,
+                        'time': int(time.time())
+                    })
                     clean(thread, output_filename, files)
             time.sleep(1)
         except Exception as e:
@@ -272,7 +268,7 @@ if __name__ == "__main__":
     me_response = mastodon.account_verify_credentials()
     # # render_regex = f'^ *@{me_response.screen_name} render'
     render_regex = 'render'
-    # me = me_response.id_str
+    me = me_response["id"]
     update_queue_params = {
         'queue': mention_queue,
         'last_time': None,
@@ -281,6 +277,7 @@ if __name__ == "__main__":
     producer = threading.Thread(target=check_mentions)
     consumer = threading.Thread(target=process_tweets)
     threading.Thread(target=process_tweets).start()
+    # TODO: update queue length?
     # threading.Thread(target=update_queue_length, args=[update_queue_params]).start()
     threading.Thread(target=process_deletions).start()
     producer.start()
