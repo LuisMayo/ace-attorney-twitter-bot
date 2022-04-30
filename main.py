@@ -15,7 +15,7 @@ from objection_engine import render_comment_list, is_music_available, get_all_mu
 from cacheout import LRUCache
 # TODO: database
 # from pymongo import MongoClient
-from mastodon import Mastodon, MastodonError, MastodonRatelimitError, CallbackStreamListener
+from mastodon import Mastodon, MastodonError, MastodonRatelimitError, StreamListener
 
 splitter = __import__("ffmpeg-split")
 
@@ -55,37 +55,46 @@ def check_mention(mention):
     #     delete_queue.put(status_dict)
 
 def check_mentions():
-    # Load last ID
-    try:
-        with open('id.txt', 'r') as idFile:
-            lastId = idFile.read()
-    except FileNotFoundError:
-        lastId = None
-
-    def get_existing_mentions():
-        nonlocal lastId
+    def get_existing_mentions(lastId):
         # mastodon.notifications has mention_only parameter but it doesn't do anything
         # https://github.com/halcy/Mastodon.py/issues/206#issuecomment-666271454
         while True:
             mentions = [n for n in mastodon.notifications(since_id=lastId) if n["type"] == "mention"]
             for mention in mentions:
                 lastId = mention["id"]
+                print(f'Mention id from REST: {lastId}')
                 check_mention(mention)
             if len(mentions) == 0:
                 break
             update_id(str(lastId))
 
-    def notification_handler(notification):
-        nonlocal lastId
-        if notification["type"] == "mention":
-            lastId = notification["id"]
+    class Listener(StreamListener):
+        def __init__(self) -> None:
+            super().__init__()
+            try:
+                with open('id.txt', 'r') as idFile:
+                    self.lastId = int(idFile.read())
+            except FileNotFoundError:
+                self.lastId = None
+
+        def on_notification(self, notification):
+            if notification["type"] != "mention":
+                return
+            if notification["id"] <= self.lastId:
+                print(f'Got duplicated mention id {notification["id"]}, skipping')
+                return
+            self.lastId = notification["id"]
+            print(f'Mention id from stream: {self.lastId}')
             check_mention(notification)
-            update_id(str(lastId))
+            update_id(str(self.lastId))
+
+        def handle_stream(self, response):
+            get_existing_mentions(self.lastId)
+            return super().handle_stream(response)
 
     while True:
         try:
-            get_existing_mentions()
-            mastodon.stream_user(CallbackStreamListener(notification_handler=notification_handler))
+            mastodon.stream_user(Listener())
         except MastodonError as e:
             print(e)
         time.sleep(20)
