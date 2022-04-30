@@ -15,7 +15,7 @@ from objection_engine import render_comment_list, is_music_available, get_all_mu
 # TODO: cache and database
 # from cacheout import LRUCache
 # from pymongo import MongoClient
-from mastodon import Mastodon, MastodonError, MastodonRatelimitError
+from mastodon import Mastodon, MastodonError, MastodonRatelimitError, CallbackStreamListener
 
 splitter = __import__("ffmpeg-split")
 
@@ -42,28 +42,52 @@ def postVideoTweet(status, filename):
     time.sleep(10)
     mastodon.status_reply(status, 'Your video is ready. Do you want it removed? Reply to me saying "remove" or "delete"', media_ids=media)
 
-def check_mentions():
-    global lastId
+def check_mention(mention):
     global mention_queue
     global render_regex
+
+    status_dict = mention["status"]
+    if re.search(render_regex, status_dict["content"]) is not None:
+        mention_queue.put(status_dict)
+        print(f"Queue size: {mention_queue.qsize()}")
+    # TODO: Implement deletion for Mastodon
+    # if ('delete' in status_dict["content"].lower() or 'remove' in status_dict["content"].lower()) and tweet.in_reply_to_user_id == me_response.id:
+    #     delete_queue.put(status_dict)
+
+def check_mentions():
+    # Load last ID
+    try:
+        with open('id.txt', 'r') as idFile:
+            lastId = idFile.read()
+    except FileNotFoundError:
+        lastId = None
+
+    def get_existing_mentions():
+        nonlocal lastId
+        # mastodon.notifications has mention_only parameter but it doesn't do anything
+        # https://github.com/halcy/Mastodon.py/issues/206#issuecomment-666271454
+        while True:
+            mentions = [n for n in mastodon.notifications(since_id=lastId) if n["type"] == "mention"]
+            for mention in mentions:
+                lastId = mention["id"]
+                check_mention(mention)
+            if len(mentions) == 0:
+                break
+            update_id(str(lastId))
+
+    def notification_handler(notification):
+        nonlocal lastId
+        if notification["type"] == "mention":
+            print("n")
+            lastId = notification["id"]
+            check_mention(notification)
+            update_id(str(lastId))
+
     while True:
         try:
-            if lastId is None:
-                mentions = mastodon.notifications(mentions_only=True)[::-1]
-            else:
-                mentions = mastodon.notifications(since_id=lastId, mentions_only=True)[::-1]
-            if len(mentions) > 0:
-                for mention in mentions:
-                    lastId = mention["id"]
-                    status_dict = mention["status"]
-                    if re.search(render_regex, status_dict["content"]) is not None:
-                        mention_queue.put(status_dict)
-                        print(mention_queue.qsize())
-                    # TODO: Implement deletion for Mastodon
-                    # if ('delete' in tweet.full_text.lower() or 'remove' in tweet.full_text.lower()) and tweet.in_reply_to_user_id == me_response.id:
-                    #     delete_queue.put(tweet)
-                update_id(str(lastId))
-        except Exception as e:
+            get_existing_mentions()
+            mastodon.stream_user(CallbackStreamListener(notification_handler=notification_handler))
+        except MastodonError as e:
             print(e)
         time.sleep(20)
 
@@ -238,13 +262,6 @@ if __name__ == "__main__":
             access_token='usercred.secret',
             api_base_url=settings.INSTANCE_URL
         )
-
-    # Load last ID
-    try:
-        with open('id.txt', 'r') as idFile:
-            lastId = idFile.read()
-    except FileNotFoundError:
-        lastId = None
 
     # Init
     # TODO: Mastodon API
