@@ -37,7 +37,6 @@ def update_id(id):
 
 def postVideoTweet(status, filename):
     media = mastodon.media_post(filename)
-    time.sleep(10)
     return mastodon.status_reply(status, 'Your video is ready. Do you want it removed? Reply to me saying "remove" or "delete"', media_ids=media)
 
 def check_mention(mention):
