@@ -110,6 +110,8 @@ def process_deletions():
         except Exception as e:
             print(f'Error when checking deletion: {e}')
             continue
+        finally:
+            delete_queue.task_done()
         if doc is None:
             try:
                 mastodon.status_reply(status, f'I can\'t delete the video, contact @/{settings.ADMIN}')
