@@ -4,7 +4,7 @@ import json
 from update_queue_lenght import update_queue_length
 sys.path.append('./objection_engine')
 sys.path.append('./video-splitter')
-from collections import Counter 
+from collections import Counter
 import tweepy
 import re
 import time
@@ -43,10 +43,10 @@ def sanitize_tweet(tweet, previous_tweet):
     if previous_tweet is not None:
         user_mentions.update(mention["screen_name"] for mention in previous_tweet.entities["user_mentions"])
         user_mentions.add(previous_tweet.user.screen_name)
-    
+
     mentions_pattern = "|".join(user_mentions)
     tweet.full_text = re.sub(f'^(@({mentions_pattern}) )+', filter_beginning_mentions, tweet.full_text)
-    
+
     tweet.full_text = re.sub(r'(https)\S*', '(link)', tweet.full_text)
     sonar_prediction = sonar.ping(tweet.full_text)
     hate_classification = next((x for x in sonar_prediction['classes']  if x['class_name'] == 'hate_speech'), None)
@@ -97,7 +97,7 @@ def process_deletions():
             if tweet_to_remove.user.id_str != me or not hasattr(tweet_to_remove, 'extended_entities') or 'media' not in tweet_to_remove.extended_entities or len(tweet_to_remove.extended_entities['media']) == 0:
                 # If they don't ask us to remove a video just ignore them
                 continue
-            filter = {"tweets": tweet.in_reply_to_status_id_str} 
+            filter = {"tweets": tweet.in_reply_to_status_id_str}
             doc = collection.find_one(filter)
         except Exception as e:
             print(e)
@@ -132,7 +132,7 @@ def process_deletions():
             except:
                 pass
         time.sleep(1)
-        
+
 
 
 def process_tweets():
@@ -152,7 +152,7 @@ def process_tweets():
             users_in_video = [tweet.user.id_str]
             video_ids = []
 
-            
+
             if 'music=' in tweet.full_text:
                 music_tweet = tweet.full_text.split('music=', 1)[1][:3]
             else:
@@ -160,9 +160,9 @@ def process_tweets():
 
             if current_tweet is not None and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
                 cache_key = (current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str) + '/' + music_tweet.lower()
-            
+
             cached_value = cache.get(cache_key)
-            
+
             if not is_music_available(music_tweet): # If the music is written badly in the mention tweet, the bot will remind how to write it properly
                 try:
                     api.update_status('The music argument format is incorrect. The posibilities are: \n' + '\n'.join(available_songs), in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
@@ -178,7 +178,7 @@ def process_tweets():
                 while (current_tweet is not None) and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
                     try:
                         current_tweet = previous_tweet or api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
-                        
+
                         if current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str'):
                             previous_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
                         else:
@@ -251,7 +251,7 @@ def process_tweets():
         except Exception as e:
             clean(thread, None, [])
             print(e)
-    
+
 
 def clean(thread, output_filename, files):
     global mention_queue
