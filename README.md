@@ -36,5 +36,8 @@ You should be good using these guides (tested on Ubuntu with success and on Debi
   - [FFMPEG compilation guide](https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu)
   - [Opencv compilation guide](https://docs.opencv.org/master/d2/de6/tutorial_py_setup_in_ubuntu.html)
 
+#### Note about MongoDB
+By default Mongita is used for easier deployment, but administrators can opt in to use full MongoDB. Set the environment variable `ACE_MONGODB=1` for this and make sure MongoDB is installed on your machine.
+
 ## Contributing
 Since this is a tiny project we don't have strict rules about contributions. Just open a Pull Request to fix any of the project issues or any improvement you have percieved on your own. Any contributions which improve or fix the project will be accepted as long as they don't deviate too much from the project objectives. If you have doubts about whether the PR would be accepted or not you can open an issue before coding to ask for my opinion
