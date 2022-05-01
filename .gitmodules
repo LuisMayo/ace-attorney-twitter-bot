@@ -1,7 +1,3 @@
 [submodule "video-splitter"]
 	path = video-splitter
 	url = https://github.com/LuisMayo/video-splitter
-[submodule "objection_engine"]
-	path = objection_engine
-	url = https://github.com/LuisMayo/objection_engine
-	branch = main

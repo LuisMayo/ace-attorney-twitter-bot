@@ -9,6 +9,7 @@
 
  - Everything included in [/objection_engine/Readme.md](https://github.com/LuisMayo/objection_engine/blob/main/README.md#prerequisites).
  - Mastodon account (Pleroma should work, but it's not tested)
+ - [pipenv](https://pipenv.pypa.io/en/latest/)
 
 
 ### Installing
@@ -20,10 +21,9 @@ git clone --recursive https://github.com/matrix07012/ace-attorney-mastodon-bot.g
 ```
 Install dependencies of this repo and the child repo. Refer to [objection engine's install instructions](https://github.com/LuisMayo/objection_engine/blob/main/README.md#installing) for any problems you may encounter
 ``` bash
-python -m pip install -r requirements.txt
-python -m pip install -r objection_engine/requirements.txt
+python -m pipenv install
 ```
-Copy settings-dummy.py as settings.py and set INSTANCE_URL, LOGIN and PASSWORD in it
+Copy settings-dummy.py as settings.py and set INSTANCE_URL, LOGIN, PASSWORD, and ADMIN in it
 
 Start the project
 `python main.py`

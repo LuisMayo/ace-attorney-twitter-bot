@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 import sys
 from update_queue_lenght import update_queue_length
-sys.path.append('./objection_engine')
 sys.path.append('./video-splitter')
 import re
 import time
