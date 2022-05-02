@@ -70,7 +70,7 @@ def check_mentions():
                 with open('id.txt', 'r') as idFile:
                     self.lastId = int(idFile.read())
             except FileNotFoundError:
-                self.lastId = None
+                self.lastId = 0
 
         def on_notification(self, notification):
             if notification["type"] != "mention":
