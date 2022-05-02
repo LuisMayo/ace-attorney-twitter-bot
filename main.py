@@ -92,6 +92,8 @@ def check_mentions():
             mastodon.stream_user(Listener())
         except MastodonError as e:
             print(f'Error from stream: {e}')
+        except Exception as e:
+            print(f'Error while processing stream: {e}')
         time.sleep(20)
 
 
