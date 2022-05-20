@@ -28,7 +28,14 @@ delete_queue = Queue('delete')
 profanity.load_censor_words_from_file('banlist.txt')
 available_songs = get_all_music_available()
 cache = LRUCache()
-mongo_client = MongoClient('mongodb://localhost/')
+
+if os.environ.get("ACE_MONGODB"):
+    from pymongo import MongoClient
+    mongo_client = MongoClient(os.environ.get("ACE_MONGODB"))
+else:
+    from mongita import MongitaClientDisk
+    mongo_client = MongitaClientDisk()
+
 collection = mongo_client['aa_tw_bot']['sent_videos']
 
 def filter_beginning_mentions(match):
