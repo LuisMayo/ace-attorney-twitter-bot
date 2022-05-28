@@ -10,7 +10,7 @@ requests = "*"
 "Mastodon.py" = "*"
 cacheout = "==0.13.1"
 mongita = "==1.1.1"
-objection-engine = {ref = "75f8866", git = "https://github.com/saschanaz/objection_engine"}
+objection-engine = {ref = "a64b2f5", git = "https://github.com/LuisMayo/objection_engine"}
 
 [dev-packages]
 
