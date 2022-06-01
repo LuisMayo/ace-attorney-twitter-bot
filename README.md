@@ -19,10 +19,9 @@ Clone the repository with submodules
 ```
 git clone --recursive https://github.com/LuisMayo/ace-attorney-twitter-bot
 ```
-Install dependencies of this repo and the child repo. Refer to [objection engine's install instructions](https://github.com/LuisMayo/objection_engine/blob/main/README.md#installing) for any problems you may encounter
+Install dependencies of this repo. Refer to [objection engine's install instructions](https://github.com/LuisMayo/objection_engine/blob/main/README.md#installing) for any problems you may encounter
 ``` bash
 python -m pip install -r requirements.txt
-python -m pip install -r objection_engine/requirements.txt
 ```
 Copy keys-dummy.json into keys.json and fill the required settings with the access keys you should've obtained from Twitter's Developer portal
 
