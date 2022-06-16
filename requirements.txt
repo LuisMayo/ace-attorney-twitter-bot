@@ -6,3 +6,4 @@ better_profanity==0.6.1
 hatesonar
 pymongo
 mongita
+git+https://github.com/LuisMayo/objection_engine.git
