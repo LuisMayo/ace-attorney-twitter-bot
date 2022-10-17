@@ -6,4 +6,6 @@ better_profanity==0.6.1
 hatesonar
 pymongo
 mongita
-git+https://github.com/LuisMayo/objection_engine.git
+objection_engine
+cython
+scikit-learn==0.22.1
