@@ -6,6 +6,6 @@ better_profanity==0.6.1
 hatesonar
 pymongo
 mongita
-objection_engine
+objection_engine~=3.2
 cython
 scikit-learn==0.22.1
