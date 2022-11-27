@@ -9,15 +9,19 @@ import tweepy
 import re
 import time
 import os
-from persistqueue import Queue
+from queue import Queue
 import threading
 import time
 import settings
 from hatesonar import Sonar
 from better_profanity import profanity
 from comment_list_brige import Comment
-from objection_engine import render_comment_list, is_music_available, get_all_music_available
+from objection_engine import is_music_available, get_all_music_available
 from cacheout import LRUCache
+import asyncio
+
+from aio_pika import connect_robust
+from aio_pika.patterns import RPC
 
 splitter = __import__("ffmpeg-split")
 
@@ -141,122 +145,134 @@ def process_deletions():
 
 
 
-def process_tweets():
+async def process_tweets():
     global mention_queue
     global update_queue_params
     global me
-    while True:
-        try:
-            tweet = mention_queue.get()
-            update_queue_params['last_time'] = tweet.created_at
-            thread = []
-            current_tweet = tweet
-            previous_tweet = None
-            # The cache key is the key for the cache, it consists on the tweet ID and the selected music
-            cache_key = None
-            # These variables are stored in mongodb database
-            users_in_video = [tweet.user.id_str]
-            video_ids = []
+    connection = await connect_robust(
+    f"amqp://{os.getenv('OE_RABBIT_CONNECTION', 'guest:guest@127.0.0.1')}/",
+    client_properties={"connection_name": "callee"},
+    )
+    async with connection:
+        # Creating channel
+        channel = await connection.channel()
+
+        rpc = await RPC.create(channel)
+        while True:
+            try:
+                tweet = mention_queue.get()
+                update_queue_params['last_time'] = tweet.created_at
+                thread = []
+                current_tweet = tweet
+                previous_tweet = None
+                # The cache key is the key for the cache, it consists on the tweet ID and the selected music
+                cache_key = None
+                # These variables are stored in mongodb database
+                users_in_video = [tweet.user.id_str]
+                video_ids = []
 
 
-            if 'music=' in tweet.full_text:
-                music_tweet = tweet.full_text.split('music=', 1)[1][:3]
-            else:
-                music_tweet = 'PWR'
+                if 'music=' in tweet.full_text:
+                    music_tweet = tweet.full_text.split('music=', 1)[1][:3]
+                else:
+                    music_tweet = 'PWR'
 
-            if current_tweet is not None and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
-                cache_key = (current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str) + '/' + music_tweet.lower()
+                if current_tweet is not None and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
+                    cache_key = (current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str) + '/' + music_tweet.lower()
 
-            cached_value = cache.get(cache_key)
+                cached_value = cache.get(cache_key)
 
-            if not is_music_available(music_tweet): # If the music is written badly in the mention tweet, the bot will remind how to write it properly
-                try:
-                    api.update_status('The music argument format is incorrect. The posibilities are: \n' + '\n'.join(available_songs), in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
-                except Exception as musicerror:
-                    print(musicerror)
-            elif cached_value is not None:
-                api.update_status('I\'ve already done that, here you have ' + cached_value, in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
-            else:
-                i = 0
-                # If we have 2 hate detections we stop rendering the video all together
-                hate_detections = 0
-                # In the case of Quotes I have to check for its presence instead of whether its None because Twitter API designers felt creative that week
-                while (current_tweet is not None) and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
+                if not is_music_available(music_tweet): # If the music is written badly in the mention tweet, the bot will remind how to write it properly
                     try:
-                        current_tweet = previous_tweet or api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
+                        api.update_status('The music argument format is incorrect. The posibilities are: \n' + '\n'.join(available_songs), in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+                    except Exception as musicerror:
+                        print(musicerror)
+                elif cached_value is not None:
+                    api.update_status('I\'ve already done that, here you have ' + cached_value, in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+                else:
+                    i = 0
+                    # If we have 2 hate detections we stop rendering the video all together
+                    hate_detections = 0
+                    # In the case of Quotes I have to check for its presence instead of whether its None because Twitter API designers felt creative that week
+                    while (current_tweet is not None) and (current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str')):
+                        try:
+                            current_tweet = previous_tweet or api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
 
-                        if current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str'):
-                            previous_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
-                        else:
-                            previous_tweet = None
+                            if current_tweet.in_reply_to_status_id_str or hasattr(current_tweet, 'quoted_status_id_str'):
+                                previous_tweet = api.get_status(current_tweet.in_reply_to_status_id_str or current_tweet.quoted_status_id_str, tweet_mode="extended")
+                            else:
+                                previous_tweet = None
 
-                        # Refusing to render zone
-                        if re.search(render_regex, current_tweet.full_text) is not None and any(user['id_str'] == me for user in current_tweet.entities['user_mentions']):
-                            break
-                        if sanitize_tweet(current_tweet, previous_tweet):
-                            hate_detections += 1
-                        if hate_detections >= 2:
-                            api.update_status('I\'m sorry. The thread may contain unwanted topics and I refuse to render them.', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
-                            clean(thread, None, [])
-                            thread = []
-                            break
-                    # End of refusing to render zone
-                        # We need all featuring users to be on the array to populate the database
-                        if current_tweet.user.id_str not in users_in_video:
-                            users_in_video.append(current_tweet.user.id_str)
-                        thread.insert(0, Comment(current_tweet).to_message())
-                        i += 1
-                        if (current_tweet is not None and i >= settings.MAX_TWEETS_PER_THREAD):
+                            # Refusing to render zone
+                            if re.search(render_regex, current_tweet.full_text) is not None and any(user['id_str'] == me for user in current_tweet.entities['user_mentions']):
+                                break
+                            if sanitize_tweet(current_tweet, previous_tweet):
+                                hate_detections += 1
+                            if hate_detections >= 2:
+                                api.update_status('I\'m sorry. The thread may contain unwanted topics and I refuse to render them.', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+                                clean(thread, None, [])
+                                thread = []
+                                break
+                        # End of refusing to render zone
+                            # We need all featuring users to be on the array to populate the database
+                            if current_tweet.user.id_str not in users_in_video:
+                                users_in_video.append(current_tweet.user.id_str)
+                            thread.insert(0, Comment(current_tweet).to_message())
+                            i += 1
+                            if (current_tweet is not None and i >= settings.MAX_TWEETS_PER_THREAD):
+                                current_tweet = None
+                                api.update_status(f'Sorry, the thread was too long, I\'ve only retrieved {i} tweets', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+                        except tweepy.TweepyException as e:
+                            try:
+                                api.update_status('I\'m sorry. I wasn\'t able to retrieve the full thread. Deleted tweets or private accounts may exist', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+                            except Exception as second_error:
+                                print (second_error)
                             current_tweet = None
-                            api.update_status(f'Sorry, the thread was too long, I\'ve only retrieved {i} tweets', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
-                    except tweepy.TweepyException as e:
-                        try:
-                            api.update_status('I\'m sorry. I wasn\'t able to retrieve the full thread. Deleted tweets or private accounts may exist', in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
-                        except Exception as second_error:
-                            print (second_error)
-                        current_tweet = None
-                if (len(thread) >= 1):
-                    output_filename = tweet.id_str + '.mp4'
-                    render_comment_list(thread, music_code= music_tweet, output_filename=output_filename, resolution_scale=2, adult_mode=True)
-                    files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
-                    reply_to_tweet = tweet
-                    first_tweet = True
-                    try:
-                        for file_name in files:
-                            reply_to_tweet = postVideoTweet(reply_to_tweet.id_str, file_name)
-                            video_ids.append(reply_to_tweet.id_str)
-                            if first_tweet:
-                                cached_value = f'https://twitter.com/{me_response.screen_name}/status/{reply_to_tweet.id_str}'
-                                cache.add(cache_key, cached_value)
-                                first_tweet = False
-                    except tweepy.error.TweepError as e:
-                        limit = False
-                        try:
-                            print(e.api_code)
-                            if (e.api_code == 185):
-                                print("I'm Rated-limited :(")
-                                limit = True
-                                mention_queue.put(tweet)
-                                time.sleep(900)
-                        except Exception as parsexc:
-                            print(parsexc)
-                        try:
-                            if not limit:
-                                api.update_status(str(e), in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
-                        except Exception as second_error:
-                            print(second_error)
-                        print(e)
-                    # We insert the object into the database
-                    collection.insert_one({
-                        'users': users_in_video,
-                        'tweets': video_ids,
-                        'time': int(time.time())
-                    })
-                    clean(thread, output_filename, files)
-            time.sleep(1)
-        except Exception as e:
-            clean(thread, None, [])
-            print(e)
+                    if (len(thread) >= 1):
+                        asyncio.create_task(do_render_and_send(tweet, thread, cache_key, users_in_video, video_ids, music_tweet, rpc))
+                time.sleep(1)
+            except Exception as e:
+                clean(thread, None, [])
+                print(e)
+
+async def do_render_and_send(tweet, thread, cache_key, users_in_video, video_ids, music_tweet, rpc):
+    output_filename = tweet.id_str + '.mp4'
+    await rpc.proxy.oe_render(thread, music_code= music_tweet, output_filename=output_filename, resolution_scale=2, adult_mode=True)
+    files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
+    reply_to_tweet = tweet
+    first_tweet = True
+    try:
+        for file_name in files:
+            reply_to_tweet = postVideoTweet(reply_to_tweet.id_str, file_name)
+            video_ids.append(reply_to_tweet.id_str)
+            if first_tweet:
+                cached_value = f'https://twitter.com/{me_response.screen_name}/status/{reply_to_tweet.id_str}'
+                cache.add(cache_key, cached_value)
+                first_tweet = False
+    except tweepy.error.TweepError as e:
+        limit = False
+        try:
+            print(e.api_code)
+            if (e.api_code == 185):
+                print("I'm Rated-limited :(")
+                limit = True
+                mention_queue.put(tweet)
+                time.sleep(900)
+        except Exception as parsexc:
+            print(parsexc)
+        try:
+            if not limit:
+                api.update_status(str(e), in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata = True)
+        except Exception as second_error:
+            print(second_error)
+        print(e)
+                        # We insert the object into the database
+    collection.insert_one({
+                            'users': users_in_video,
+                            'tweets': video_ids,
+                            'time': int(time.time())
+                        })
+    clean(thread, output_filename, files)
 
 
 def clean(thread, output_filename, files):
@@ -309,7 +325,6 @@ update_queue_params = {
 }
 producer = threading.Thread(target=check_mentions)
 consumer = threading.Thread(target=process_tweets)
-threading.Thread(target=process_tweets).start()
 threading.Thread(target=update_queue_length, args=[update_queue_params]).start()
 threading.Thread(target=process_deletions).start()
 producer.start()
