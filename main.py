@@ -26,8 +26,8 @@ from aio_pika.patterns import RPC
 splitter = __import__("ffmpeg-split")
 
 sonar = Sonar()
-mention_queue = Queue('queue')
-delete_queue = Queue('delete')
+mention_queue = Queue()
+delete_queue = Queue()
 profanity.load_censor_words_from_file('banlist.txt')
 available_songs = get_all_music_available()
 cache = LRUCache()
