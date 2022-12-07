@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
-from time import sleep
+import asyncio
 
-def update_queue_length(params):
+async def update_queue_length(params):
     while True:
         if params['queue'].empty():
             params['api'].update_profile(location='queue: empty')
@@ -11,4 +11,4 @@ def update_queue_length(params):
             # We only need hour and minutes
             time_difference_formatted = time_difference[:time_difference.index(':', 3)]
             params['api'].update_profile(location=f'queue time: {time_difference_formatted}. length: {size}')
-        sleep(60)
+        await asyncio.sleep(60)
