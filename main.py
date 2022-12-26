@@ -24,6 +24,7 @@ splitter = __import__("ffmpeg-split")
 sonar = Sonar()
 mention_queue = asyncio.Queue()
 delete_queue = asyncio.Queue()
+pending_user_jobs = []
 profanity.load_censor_words_from_file('banlist.txt')
 available_songs = get_all_music_available()
 cache = LRUCache()
@@ -240,10 +241,15 @@ async def extended_process_tweet(rpc, tweet):
             print(e)
     return thread
 
-async def do_render_and_send(tweet, thread, cache_key, users_in_video, video_ids, music_tweet, rpc: RPC):
+async def do_render_and_send(tweet: tweepy.Tw, thread, cache_key, users_in_video, video_ids, music_tweet, rpc: RPC):
     output_filename = tweet.id_str + '.mp4'
     if rpc is not None:
-        output_filename = await rpc.proxy.oe_render(comment_list=thread, music_code= music_tweet, output_filename=output_filename, resolution_scale=2, adult_mode=True)
+        priority = 4 if tweet.user.id_str in pending_user_jobs else 5
+        pending_user_jobs.append(tweet.user.id_str)
+        try:
+            output_filename = await rpc.call("oe_render", dict(comment_list=thread, music_code= music_tweet, output_filename=output_filename, resolution_scale=2, adult_mode=True), priority=priority)
+        finally:
+            pending_user_jobs.remove(tweet.user.id_str)
     else:
         render_comment_list(comment_list=thread, music_code= music_tweet, output_filename=output_filename, resolution_scale=2, adult_mode=True)
     files = splitter.split_by_seconds(output_filename, 140, vcodec='libx264')
