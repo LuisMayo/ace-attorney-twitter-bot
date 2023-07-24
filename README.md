@@ -1,4 +1,6 @@
 # Ace Attorney twitter Bot
+
+# Archived due to APIv1 deprecation and paywalling
  Twitter bot that turns comment chains into ace attorney scenes. Inspired by and using https://github.com/micah5/ace-attorney-reddit-bot
  Currently being executed on [@aceCourtBot](https://twitter.com/aceCourtBot?s=09)
 
